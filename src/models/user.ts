@@ -2,71 +2,45 @@ import mongoose, { Schema, Document } from 'mongoose';
 import bcrypt from 'bcryptjs';
 
 export interface IUser extends Document {
-  username: string;
-  password: string;
   name?: string;
+  username: string;
   email?: string;
   role: string;
-  status: string;
-  created_at: Date;
-  updated_at?: Date;
-  comparePassword(candidatePassword: string): Promise<boolean>;
+  phone?: string;
+  password: string;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
-const UserSchema: Schema = new Schema({
-  username: { 
-    type: String, 
-    required: true, 
-    unique: true 
-  },
-  password: { 
-    type: String, 
-    required: true 
-  },
-  name: { 
-    type: String 
-  },
-  email: { 
-    type: String 
-  },
-  role: { 
-    type: String, 
-    required: true, 
-    enum: ['admin', 'employee'],
-    default: 'employee'
-  },
-  status: { 
-    type: String, 
-    default: 'active' 
-  },
-  created_at: { 
-    type: Date, 
-    default: Date.now 
-  },
-  updated_at: { 
-    type: Date 
-  }
+const UserSchema = new Schema<IUser>({
+  name: { type: String },
+  username: { type: String, required: true, unique: true },
+  email: { type: String },
+  role: { type: String, required: true },
+  phone: { type: String },
+  password: { type: String, required: true },
+  createdAt: { type: Date, default: Date.now },
+  updatedAt: { type: Date, default: Date.now }
 });
 
-// Before saving, hash the password
-UserSchema.pre('save', async function(this: IUser, next) {
+// Hash password before saving
+UserSchema.pre('save', async function(next) {
   if (!this.isModified('password')) return next();
   
   try {
     const salt = await bcrypt.genSalt(10);
     this.password = await bcrypt.hash(this.password, salt);
     next();
-  } catch (error: any) {
-    next(error);
+  } catch (error) {
+    next(error as Error);
   }
 });
 
-// Add method to compare passwords
+// Compare password method
 UserSchema.methods.comparePassword = async function(candidatePassword: string): Promise<boolean> {
   return bcrypt.compare(candidatePassword, this.password);
 };
 
-// Avoid duplicate model compilation in development
 const User = mongoose.models.User || mongoose.model<IUser>('User', UserSchema);
 
 export default User; 

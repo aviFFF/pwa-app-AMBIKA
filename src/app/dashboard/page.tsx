@@ -3,9 +3,11 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
+import { User } from "@/types/user";
 
 export default function Dashboard() {
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 
@@ -15,9 +17,9 @@ export default function Dashboard() {
     
     if (userStr) {
       try {
-        const userData = JSON.parse(userStr);
+        const userData = JSON.parse(userStr) as User;
         setUser(userData);
-      } catch (e) {
+      } catch {
         // Invalid user data, redirect to login
         router.push("/login");
       }
@@ -48,12 +50,19 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen bg-gray-100">
-      <header className="bg-gradient-to-r from-red-800 to-red-600 text-white shadow">
+      <header className="bg-gradient-to-r from-[#34495e] to-[#2c3e50] text-white shadow">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
           <div className="flex items-center">
             <Link href="/" className="flex items-center">
-              <div className="w-[50px] h-[50px] flex items-center justify-center bg-white text-red-700 rounded-full text-xs font-bold mr-3">
-                <span>AMBIKA</span>
+              <div className="w-[50px] h-[50px] relative flex items-center justify-center rounded-full overflow-hidden border-2 border-white shadow-lg mr-3">
+                <Image
+                  src="/logo.png"
+                  alt="Ambika Empire Logo"
+                  width={50}
+                  height={50}
+                  className="object-cover"
+                  priority
+                />
               </div>
               <h1 className="text-xl font-semibold text-white">Ambika Empire</h1>
             </Link>
@@ -62,12 +71,12 @@ export default function Dashboard() {
           <div className="flex items-center">
             <div className="mr-4">
               <p className="text-sm text-white">Welcome, {user.name || user.username}</p>
-              <p className="text-xs text-red-100">{user.role}</p>
+              <p className="text-xs text-[#34495e]/80">{user.role}</p>
             </div>
             
             <button 
               onClick={handleLogout}
-              className="bg-white text-red-700 hover:bg-red-50 py-1 px-3 rounded text-sm transition-colors"
+              className="bg-white text-[#34495e] hover:bg-[#34495e]/10 py-1 px-3 rounded text-sm transition-colors"
             >
               Logout
             </button>
@@ -78,13 +87,13 @@ export default function Dashboard() {
       <nav className="bg-white shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex space-x-8 overflow-x-auto">
-            <a href="#" className="border-b-2 border-red-600 text-red-600 px-3 py-4 text-sm font-medium">Dashboard</a>
-            <a href="#" className="border-b-2 border-transparent hover:border-red-300 text-gray-600 hover:text-red-600 px-3 py-4 text-sm font-medium transition-colors">Vendors</a>
-            <a href="#" className="border-b-2 border-transparent hover:border-red-300 text-gray-600 hover:text-red-600 px-3 py-4 text-sm font-medium transition-colors">Products</a>
-            <a href="#" className="border-b-2 border-transparent hover:border-red-300 text-gray-600 hover:text-red-600 px-3 py-4 text-sm font-medium transition-colors">Orders</a>
-            <a href="#" className="border-b-2 border-transparent hover:border-red-300 text-gray-600 hover:text-red-600 px-3 py-4 text-sm font-medium transition-colors">Inventory</a>
-            <a href="#" className="border-b-2 border-transparent hover:border-red-300 text-gray-600 hover:text-red-600 px-3 py-4 text-sm font-medium transition-colors">Reports</a>
-            <a href="#" className="border-b-2 border-transparent hover:border-red-300 text-gray-600 hover:text-red-600 px-3 py-4 text-sm font-medium transition-colors">Settings</a>
+            <Link href="/dashboard" className="border-b-2 border-[#34495e] text-[#34495e] px-3 py-4 text-sm font-medium">Dashboard</Link>
+            <Link href="/dashboard/vendors" className="border-b-2 border-transparent hover:border-[#34495e]/30 text-gray-600 hover:text-[#34495e] px-3 py-4 text-sm font-medium transition-colors">Vendors</Link>
+            <Link href="/dashboard/products" className="border-b-2 border-transparent hover:border-[#34495e]/30 text-gray-600 hover:text-[#34495e] px-3 py-4 text-sm font-medium transition-colors">Products</Link>
+            <Link href="/dashboard/orders" className="border-b-2 border-transparent hover:border-[#34495e]/30 text-gray-600 hover:text-[#34495e] px-3 py-4 text-sm font-medium transition-colors">Orders</Link>
+            <Link href="/dashboard/inventory" className="border-b-2 border-transparent hover:border-[#34495e]/30 text-gray-600 hover:text-[#34495e] px-3 py-4 text-sm font-medium transition-colors">Inventory</Link>
+            <Link href="/dashboard/reports" className="border-b-2 border-transparent hover:border-[#34495e]/30 text-gray-600 hover:text-[#34495e] px-3 py-4 text-sm font-medium transition-colors">Reports</Link>
+            <Link href="/dashboard/settings" className="border-b-2 border-transparent hover:border-[#34495e]/30 text-gray-600 hover:text-[#34495e] px-3 py-4 text-sm font-medium transition-colors">Settings</Link>
           </div>
         </div>
       </nav>
@@ -213,12 +222,12 @@ export default function Dashboard() {
               </table>
             </div>
             <div className="px-6 py-4 border-t border-gray-200">
-              <a href="#" className="text-sm font-medium text-red-600 hover:text-red-800 flex items-center">
+              <Link href="/dashboard/vendors" className="text-sm font-medium text-red-600 hover:text-red-800 flex items-center">
                 View all vendors
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                 </svg>
-              </a>
+              </Link>
             </div>
           </div>
           
@@ -227,7 +236,7 @@ export default function Dashboard() {
               <h3 className="text-lg font-medium text-gray-800">Quick Actions</h3>
             </div>
             <div className="p-6 space-y-6">
-              <button className="w-full flex items-center justify-between bg-red-50 hover:bg-red-100 text-red-700 px-4 py-3 rounded-lg transition-colors">
+              <Link href="/dashboard/vendors" className="w-full flex items-center justify-between bg-red-50 hover:bg-red-100 text-red-700 px-4 py-3 rounded-lg transition-colors">
                 <span className="flex items-center">
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
@@ -237,9 +246,9 @@ export default function Dashboard() {
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                 </svg>
-              </button>
+              </Link>
               
-              <button className="w-full flex items-center justify-between bg-blue-50 hover:bg-blue-100 text-blue-700 px-4 py-3 rounded-lg transition-colors">
+              <Link href="/dashboard/vendors" className="w-full flex items-center justify-between bg-blue-50 hover:bg-blue-100 text-blue-700 px-4 py-3 rounded-lg transition-colors">
                 <span className="flex items-center">
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -249,9 +258,9 @@ export default function Dashboard() {
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                 </svg>
-              </button>
+              </Link>
               
-              <button className="w-full flex items-center justify-between bg-green-50 hover:bg-green-100 text-green-700 px-4 py-3 rounded-lg transition-colors">
+              <Link href="/dashboard/reports" className="w-full flex items-center justify-between bg-green-50 hover:bg-green-100 text-green-700 px-4 py-3 rounded-lg transition-colors">
                 <span className="flex items-center">
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -261,9 +270,9 @@ export default function Dashboard() {
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                 </svg>
-              </button>
+              </Link>
               
-              <button className="w-full flex items-center justify-between bg-purple-50 hover:bg-purple-100 text-purple-700 px-4 py-3 rounded-lg transition-colors">
+              <Link href="/dashboard/vendors" className="w-full flex items-center justify-between bg-purple-50 hover:bg-purple-100 text-purple-700 px-4 py-3 rounded-lg transition-colors">
                 <span className="flex items-center">
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
@@ -273,7 +282,7 @@ export default function Dashboard() {
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                 </svg>
-              </button>
+              </Link>
             </div>
           </div>
         </div>

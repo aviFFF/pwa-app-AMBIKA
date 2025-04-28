@@ -4,40 +4,34 @@ import Link from "next/link";
 export default function Home() {
   return (
     <div className="max-w-5xl mx-auto mt-4 text-center px-4">
-      {/* Logo Placeholder */}
+      {/* Logo */}
       <div 
-        className="mx-auto w-[180px] h-[180px] rounded-full bg-white flex items-center justify-center border-2 border-red-600 shadow-lg mb-5"
+        className="mx-auto w-[180px] h-[180px] relative flex items-center justify-center rounded-full overflow-hidden shadow-lg mb-5"
       >
-<Image
-              width={200}
-              height={100}
-              alt="ambikaempire"
-              src="/logo.png"
-              />
-      </div>
-
-      <h1 className="text-4xl font-bold mb-2">
-        Welcome to Ambika Empire
-      </h1>
-      
-      <div className="my-8">
-        <img
-          src="/supply-chain-image.svg"
-          alt="Supply Chain Management"
-          className="max-w-full h-auto mb-8 rounded-lg shadow-lg mx-auto"
+        <Image
+          src="/logo.png"
+          alt="Ambika Empire Logo"
+          width={180}
+          height={180}
+          className="object-cover"
+          priority
         />
       </div>
+
+      <h1 className="text-4xl font-bold mb-2 text-[#34495e]">
+        Welcome to Ambika Empire
+      </h1>
 
       <div className="mt-12 flex gap-6 justify-center">
         <Link 
           href="/login"
-          className="bg-[#e74c3c] text-white py-3 px-8 rounded-lg text-lg font-bold hover:bg-[#c0392b] transition-colors"
+          className="bg-[#34495e] text-white py-3 px-8 rounded-lg text-lg font-bold hover:bg-[#2c3e50] transition-colors"
         >
           Login
         </Link>
         <Link 
           href="/dashboard"
-          className="border border-[#e74c3c] text-[#e74c3c] py-3 px-8 rounded-lg text-lg font-bold hover:bg-red-50 transition-colors"
+          className="border border-[#34495e] text-[#34495e] py-3 px-8 rounded-lg text-lg font-bold hover:bg-[#34495e]/10 transition-colors"
         >
           Dashboard
         </Link>
