@@ -24,6 +24,27 @@ const nextConfig = {
     // Warning: This allows production builds to successfully complete even if
     // your project has ESLint errors.
     ignoreDuringBuilds: true,
+  },
+  // Add webpack configuration for jsPDF browser polyfills
+  webpack: (config, { isServer }) => {
+    if (!isServer) {
+      // Client-side specific configuration
+      config.resolve.fallback = {
+        ...config.resolve.fallback,
+        fs: false,
+        path: false,
+        stream: false,
+        canvas: false,
+        encoding: false
+      };
+    }
+    
+    // Add jspdf as external for server
+    if (isServer) {
+      config.externals = [...config.externals, 'canvas', 'jsdom'];
+    }
+    
+    return config;
   }
 };
 

@@ -1,8 +1,14 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { jsPDF } from "jspdf";
-import "jspdf-autotable";
+import dynamic from 'next/dynamic';
+import { generatePDF } from '@/utils/pdf-fix';
+
+// Create dynamic component that only loads on client side
+const PDFExporter = dynamic(
+  () => import('@/utils/pdfConfig').then(mod => ({ default: mod.createPDF })),
+  { ssr: false }
+);
 
 interface Product {
   id: number;
@@ -277,18 +283,8 @@ export default function Products() {
     }
   };
 
-  const generatePDF = () => {
-    const doc = new jsPDF();
-    
-    // Add title
-    doc.setFontSize(18);
-    doc.text('Products List', 14, 22);
-    
-    // Add date
-    doc.setFontSize(11);
-    doc.text(`Generated on: ${new Date().toLocaleDateString()}`, 14, 30);
-    
-    // Convert products data for autotable
+  const handleGeneratePDF = async () => {
+    // Convert products data for PDF
     const data = products.map((product, index) => {
       // Get supplier name from supplierId
       let supplierName = '-';
@@ -299,43 +295,28 @@ export default function Products() {
         }
       }
       
-      return {
-        id: index + 1,
-        code: product.code || '-',
-        name: product.name,
-        size: product.size || '-',
-        category: product.category || '-',
-        supplier: supplierName,
-        price: product.price ? product.price.toFixed(2) : '0.00'
-      };
+      return [
+        index + 1,
+        product.code || '-',
+        product.name,
+        product.size || '-',
+        product.category || '-',
+        supplierName,
+        product.price ? `₹${product.price.toFixed(2)}` : '₹0.00'
+      ];
     });
     
-    // @ts-expect-error - jsPDF-AutoTable extends jsPDF with the autoTable method
-    doc.autoTable({
-      startY: 40,
-      head: [['Serial No.', 'Product Code', 'Product Name', 'Size', 'Category', 'Supplier', 'Rate (₹)']],
-      body: data.map(item => [
-        item.id,
-        item.code,
-        item.name,
-        item.size,
-        item.category,
-        item.supplier,
-        item.price
-      ]),
-      theme: 'grid',
-      headStyles: {
-        fillColor: [74, 108, 247],
-        textColor: [255, 255, 255],
-        fontStyle: 'bold'
-      },
-      alternateRowStyles: {
-        fillColor: [240, 244, 255]
-      }
-    });
+    // Generate PDF
+    const success = await generatePDF(
+      'Products List',
+      ['Serial No.', 'Product Code', 'Product Name', 'Size', 'Category', 'Supplier', 'Rate'],
+      data,
+      'products_list.pdf'
+    );
     
-    // Save the PDF
-    doc.save('products_list.pdf');
+    if (!success) {
+      alert("Failed to generate PDF. Please try again.");
+    }
   };
 
   const getSupplierName = (supplierId?: number) => {
@@ -350,7 +331,7 @@ export default function Products() {
         <h1 className="text-2xl font-semibold text-gray-800">Product Management</h1>
         <div className="space-x-3">
           <button
-            onClick={generatePDF}
+            onClick={handleGeneratePDF}
             className="bg-white border border-blue-600 text-blue-600 hover:bg-blue-50 px-4 py-2 rounded text-sm"
           >
             Download PDF
