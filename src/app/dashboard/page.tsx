@@ -1,300 +1,505 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import Link from "next/link";
-import Image from "next/image";
-import { User } from "@/types/user";
+import { useState, useEffect } from "react";
+import { jsPDF } from "jspdf";
+import "jspdf-autotable";
+
+interface Order {
+  id: number;
+  order_number: string;
+  date: string;
+  customerName: string;
+  items: Array<{ product_name: string; quantity: number; price: number }>;
+  total: number;
+  totalAmount?: number;
+}
+
+interface Estimate {
+  id: number;
+  estimate_number: string;
+  date: string;
+  customerName: string;
+  status: string;
+  items: Array<{ product_name: string; quantity: number; price: number }>;
+  total: number;
+  totalAmount?: number;
+  order_number?: string;
+}
+
+interface InventoryItem {
+  id: number;
+  code: string;
+  name: string;
+  quantity: number;
+  price: number;
+}
 
 export default function Dashboard() {
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
-  const router = useRouter();
+  const [activeTab, setActiveTab] = useState<'orders' | 'pending-orders' | 'inventory'>('orders');
+  const [todayOrders, setTodayOrders] = useState<Order[]>([]);
+  const [pendingEstimates, setPendingEstimates] = useState<Estimate[]>([]);
+  const [inventory, setInventory] = useState<InventoryItem[]>([]);
+  const [selectedOrder, setSelectedOrder] = useState<Order | Estimate | null>(null);
+  const [selectedInventoryItem, setSelectedInventoryItem] = useState<InventoryItem | null>(null);
+  const [isOrderModalOpen, setIsOrderModalOpen] = useState(false);
+  const [isInventoryModalOpen, setIsInventoryModalOpen] = useState(false);
 
   useEffect(() => {
-    // Check if user is logged in
-    const userStr = sessionStorage.getItem("user");
-    
-    if (userStr) {
-      try {
-        const userData = JSON.parse(userStr) as User;
-        setUser(userData);
-      } catch {
-        // Invalid user data, redirect to login
-        router.push("/login");
-      }
-    } else {
-      // No user data, redirect to login
-      router.push("/login");
-    }
-    
-    setLoading(false);
-  }, [router]);
-  
-  const handleLogout = () => {
-    sessionStorage.removeItem("user");
-    router.push("/login");
-  };
-  
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-100">
-        <div className="text-xl font-semibold">Loading...</div>
-      </div>
-    );
-  }
+    loadDashboardData();
+    setupUpdateListeners();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-  if (!user) {
-    return null; // This will be handled by the useEffect redirect
-  }
+  const loadDashboardData = async () => {
+    try {
+      // Load today's orders
+      const today = new Date().toISOString().split('T')[0];
+      const allOrders = JSON.parse(localStorage.getItem('orders') || '[]');
+      const filteredOrders = allOrders.filter((order: Order) => {
+        const orderDate = order.date ? 
+          (order.date.includes('T') ? order.date.split('T')[0] : order.date) : '';
+        return orderDate === today;
+      });
+      setTodayOrders(filteredOrders);
+
+      // Load pending estimates
+      const allEstimates = JSON.parse(localStorage.getItem('estimates') || '[]');
+      const filteredEstimates = allEstimates.filter((estimate: Estimate) => 
+        estimate.status && estimate.status.toLowerCase() === 'pending'
+      );
+      setPendingEstimates(filteredEstimates);
+
+      // Load inventory
+      let inventoryData = [];
+      try {
+        inventoryData = JSON.parse(localStorage.getItem('inventory') || '[]');
+      } catch (error) {
+        console.error('Error loading inventory:', error);
+        inventoryData = [];
+      }
+      setInventory(inventoryData);
+    } catch (error) {
+      console.error('Error in loadDashboardData:', error);
+    }
+  };
+
+  const setupUpdateListeners = () => {
+    // Listen for storage events
+    window.addEventListener('storage', (event) => {
+      if (event.key === 'order-update-timestamp' || 
+          event.key === 'estimate-update-timestamp' || 
+          event.key === 'product-update-timestamp') {
+        loadDashboardData();
+      }
+    });
+  };
+
+  const handleViewOrder = (order: Order | Estimate) => {
+    setSelectedOrder(order);
+    setIsOrderModalOpen(true);
+  };
+
+  const handleViewInventory = (item: InventoryItem) => {
+    setSelectedInventoryItem(item);
+    setIsInventoryModalOpen(true);
+  };
+
+  const closeModal = () => {
+    setIsOrderModalOpen(false);
+    setIsInventoryModalOpen(false);
+  };
+
+  const getStockStatus = (quantity: number) => {
+    if (quantity < 20) return { class: 'bg-red-100 text-red-800', text: 'Low' };
+    if (quantity < 30) return { class: 'bg-yellow-100 text-yellow-800', text: 'Medium' };
+    return { class: 'bg-green-100 text-green-800', text: 'Good' };
+  };
+
+  const generateDashboardPDF = () => {
+    const doc = new jsPDF();
+    
+    // Add title
+    doc.setFontSize(18);
+    doc.text("Dashboard Report", 14, 22);
+    
+    // Add date and time
+    doc.setFontSize(11);
+    doc.text(`Generated on: ${new Date().toLocaleString()}`, 14, 30);
+    
+    // Summary section
+    doc.setFontSize(14);
+    doc.text("Summary", 14, 45);
+    
+    const ordersCount = todayOrders.length;
+    const ordersValue = todayOrders.reduce((sum, order) => sum + (parseFloat(order.totalAmount?.toString() || order.total.toString()) || 0), 0);
+    const pendingCount = pendingEstimates.length;
+    const pendingValue = pendingEstimates.reduce((sum, estimate) => sum + (parseFloat(estimate.totalAmount?.toString() || estimate.total.toString()) || 0), 0);
+    const lowStockCount = inventory.filter(item => item.quantity < 30).length;
+    
+    // @ts-expect-error - jsPDF-AutoTable extends jsPDF with the autoTable method
+    doc.autoTable({
+      startY: 50,
+      head: [['Metric', 'Value']],
+      body: [
+        ["Today's Orders Count", ordersCount],
+        ["Today's Orders Value", `₹${ordersValue.toFixed(2)}`],
+        ["Pending Estimates Count", pendingCount],
+        ["Pending Estimates Value", `₹${pendingValue.toFixed(2)}`],
+        ["Low Stock Items Count", lowStockCount]
+      ],
+      theme: 'grid',
+      headStyles: {
+        fillColor: [74, 108, 247],
+        textColor: [255, 255, 255],
+        fontStyle: 'bold'
+      }
+    });
+    
+    // Save the PDF
+    doc.save('dashboard_report.pdf');
+  };
 
   return (
-    <div className="min-h-screen bg-gray-100">
-      <header className="bg-gradient-to-r from-[#34495e] to-[#2c3e50] text-white shadow">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
-          <div className="flex items-center">
-            <Link href="/" className="flex items-center">
-              <div className="w-[50px] h-[50px] relative flex items-center justify-center rounded-full overflow-hidden border-2 border-white shadow-lg mr-3">
-                <Image
-                  src="/logo.png"
-                  alt="Ambika Empire Logo"
-                  width={50}
-                  height={50}
-                  className="object-cover"
-                  priority
-                />
-              </div>
-              <h1 className="text-xl font-semibold text-white">Ambika Empire</h1>
-            </Link>
+    <div className="container mx-auto px-4">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6">
+        <h1 className="text-2xl font-semibold text-gray-800 mb-4 sm:mb-0">Dashboard Overview</h1>
+        <button 
+          onClick={generateDashboardPDF}
+          className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded text-sm w-full sm:w-auto"
+        >
+          Download Dashboard PDF
+        </button>
+      </div>
+
+      {/* Dashboard Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6 mb-6 sm:mb-8">
+        <div 
+          className={`bg-white p-4 sm:p-6 rounded-lg shadow-md cursor-pointer transition transform hover:-translate-y-1 hover:shadow-lg ${activeTab === 'orders' ? 'border-2 border-blue-500' : ''}`}
+          onClick={() => setActiveTab('orders')}
+        >
+          <h2 className="text-lg font-medium text-gray-800">Today's Orders</h2>
+          <div className="text-2xl sm:text-3xl font-bold text-blue-600 my-2 sm:my-3">{todayOrders.length}</div>
+          <div className="flex justify-between text-xs sm:text-sm text-gray-600">
+            <span>Click to view details</span>
+            <span>₹{todayOrders.reduce((sum, order) => sum + (parseFloat(order.totalAmount?.toString() || order.total.toString()) || 0), 0).toFixed(2)}</span>
           </div>
-          
-          <div className="flex items-center">
-            <div className="mr-4">
-              <p className="text-sm text-white">Welcome, {user.name || user.username}</p>
-              <p className="text-xs text-[#34495e]/80">{user.role}</p>
+        </div>
+
+        <div 
+          className={`bg-white p-4 sm:p-6 rounded-lg shadow-md cursor-pointer transition transform hover:-translate-y-1 hover:shadow-lg ${activeTab === 'pending-orders' ? 'border-2 border-blue-500' : ''}`}
+          onClick={() => setActiveTab('pending-orders')}
+        >
+          <h2 className="text-lg font-medium text-gray-800">Pending Estimates</h2>
+          <div className="text-2xl sm:text-3xl font-bold text-blue-600 my-2 sm:my-3">{pendingEstimates.length}</div>
+          <div className="flex justify-between text-xs sm:text-sm text-gray-600">
+            <span>Awaiting approval</span>
+            <span>₹{pendingEstimates.reduce((sum, estimate) => sum + (parseFloat(estimate.totalAmount?.toString() || estimate.total.toString()) || 0), 0).toFixed(2)}</span>
+          </div>
+        </div>
+
+        <div 
+          className={`bg-white p-4 sm:p-6 rounded-lg shadow-md cursor-pointer transition transform hover:-translate-y-1 hover:shadow-lg ${activeTab === 'inventory' ? 'border-2 border-blue-500' : ''}`}
+          onClick={() => setActiveTab('inventory')}
+        >
+          <h2 className="text-lg font-medium text-gray-800">Inventory Status</h2>
+          <div className="text-2xl sm:text-3xl font-bold text-blue-600 my-2 sm:my-3">
+            {inventory.filter(item => item.quantity < 30).length}
+          </div>
+          <div className="flex justify-between text-xs sm:text-sm text-gray-600">
+            <span>Items with low stock</span>
+            <span>Click to view details</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Tables Section */}
+      <div className="bg-white rounded-lg shadow-md p-4 sm:p-6">
+        {activeTab === 'orders' && (
+          <>
+            <h3 className="text-lg font-medium text-gray-800 mb-4">Today's Orders</h3>
+            <div className="overflow-x-auto -mx-4 sm:mx-0">
+              <div className="inline-block min-w-full align-middle">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-3 py-2 sm:px-6 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Order ID</th>
+                      <th className="px-3 py-2 sm:px-6 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                      <th className="px-3 py-2 sm:px-6 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Customer</th>
+                      <th className="hidden sm:table-cell px-3 py-2 sm:px-6 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Items</th>
+                      <th className="px-3 py-2 sm:px-6 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total</th>
+                      <th className="px-3 py-2 sm:px-6 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {todayOrders.length === 0 ? (
+                      <tr>
+                        <td colSpan={6} className="px-3 py-2 sm:px-6 sm:py-4 text-center text-gray-500">No orders found for today</td>
+                      </tr>
+                    ) : (
+                      todayOrders.map((order) => (
+                        <tr key={order.id} className="hover:bg-gray-50">
+                          <td className="px-3 py-2 sm:px-6 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500">{order.order_number || order.id}</td>
+                          <td className="px-3 py-2 sm:px-6 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500">{new Date(order.date).toLocaleDateString()}</td>
+                          <td className="px-3 py-2 sm:px-6 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500">{order.customerName || 'Unknown'}</td>
+                          <td className="hidden sm:table-cell px-3 py-2 sm:px-6 sm:py-4 text-xs sm:text-sm text-gray-500">
+                            {order.items && order.items.length > 0 
+                              ? order.items.map(item => `${item.product_name} (${item.quantity})`).join(', ')
+                              : 'No items'}
+                          </td>
+                          <td className="px-3 py-2 sm:px-6 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500">
+                            ₹{(parseFloat(order.totalAmount?.toString() || order.total.toString()) || 0).toFixed(2)}
+                          </td>
+                          <td className="px-3 py-2 sm:px-6 sm:py-4 whitespace-nowrap text-xs sm:text-sm">
+                            <button 
+                              onClick={() => handleViewOrder(order)}
+                              className="text-blue-600 hover:text-blue-900"
+                            >
+                              View
+                            </button>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </>
+        )}
+
+        {activeTab === 'pending-orders' && (
+          <>
+            <h3 className="text-lg font-medium text-gray-800 mb-4">Pending Estimates</h3>
+            <div className="overflow-x-auto -mx-4 sm:mx-0">
+              <div className="inline-block min-w-full align-middle">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-3 py-2 sm:px-6 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Estimate ID</th>
+                      <th className="px-3 py-2 sm:px-6 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                      <th className="px-3 py-2 sm:px-6 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Customer</th>
+                      <th className="hidden sm:table-cell px-3 py-2 sm:px-6 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Items</th>
+                      <th className="px-3 py-2 sm:px-6 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total</th>
+                      <th className="px-3 py-2 sm:px-6 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {pendingEstimates.length === 0 ? (
+                      <tr>
+                        <td colSpan={6} className="px-3 py-2 sm:px-6 sm:py-4 text-center text-gray-500">No pending estimates found</td>
+                      </tr>
+                    ) : (
+                      pendingEstimates.map((estimate) => (
+                        <tr key={estimate.id} className="hover:bg-gray-50">
+                          <td className="px-3 py-2 sm:px-6 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500">{estimate.estimate_number || estimate.id}</td>
+                          <td className="px-3 py-2 sm:px-6 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500">{new Date(estimate.date).toLocaleDateString()}</td>
+                          <td className="px-3 py-2 sm:px-6 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500">{estimate.customerName || 'Unknown'}</td>
+                          <td className="hidden sm:table-cell px-3 py-2 sm:px-6 sm:py-4 text-xs sm:text-sm text-gray-500">
+                            {estimate.items && estimate.items.length > 0 
+                              ? estimate.items.map(item => `${item.product_name} (${item.quantity})`).join(', ')
+                              : 'No items'}
+                          </td>
+                          <td className="px-3 py-2 sm:px-6 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500">
+                            ₹{(parseFloat(estimate.totalAmount?.toString() || estimate.total.toString()) || 0).toFixed(2)}
+                          </td>
+                          <td className="px-3 py-2 sm:px-6 sm:py-4 whitespace-nowrap text-xs sm:text-sm">
+                            <button 
+                              onClick={() => handleViewOrder(estimate)}
+                              className="text-blue-600 hover:text-blue-900"
+                            >
+                              View
+                            </button>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </>
+        )}
+
+        {activeTab === 'inventory' && (
+          <>
+            <h3 className="text-lg font-medium text-gray-800 mb-4">Inventory Status</h3>
+            <div className="overflow-x-auto -mx-4 sm:mx-0">
+              <div className="inline-block min-w-full align-middle">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-3 py-2 sm:px-6 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Product Code</th>
+                      <th className="px-3 py-2 sm:px-6 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Product Name</th>
+                      <th className="px-3 py-2 sm:px-6 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Quantity</th>
+                      <th className="hidden sm:table-cell px-3 py-2 sm:px-6 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Price</th>
+                      <th className="px-3 py-2 sm:px-6 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                      <th className="px-3 py-2 sm:px-6 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {inventory.filter(item => item.quantity < 30).length === 0 ? (
+                      <tr>
+                        <td colSpan={6} className="px-3 py-2 sm:px-6 sm:py-4 text-center text-gray-500">No low stock items found</td>
+                      </tr>
+                    ) : (
+                      inventory
+                        .filter(item => item.quantity < 30)
+                        .map((item) => {
+                          const status = getStockStatus(item.quantity);
+                          return (
+                            <tr key={item.id} className="hover:bg-gray-50">
+                              <td className="px-3 py-2 sm:px-6 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500">{item.code || 'Unknown'}</td>
+                              <td className="px-3 py-2 sm:px-6 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500">{item.name || 'Unknown Product'}</td>
+                              <td className="px-3 py-2 sm:px-6 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500">{item.quantity || 0}</td>
+                              <td className="hidden sm:table-cell px-3 py-2 sm:px-6 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500">₹{item.price ? item.price.toFixed(2) : '0.00'}</td>
+                              <td className="px-3 py-2 sm:px-6 sm:py-4 whitespace-nowrap">
+                                <span className={`px-2 py-0.5 sm:py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${status.class}`}>
+                                  {status.text}
+                                </span>
+                              </td>
+                              <td className="px-3 py-2 sm:px-6 sm:py-4 whitespace-nowrap text-xs sm:text-sm">
+                                <button 
+                                  onClick={() => handleViewInventory(item)}
+                                  className="text-blue-600 hover:text-blue-900"
+                                >
+                                  View
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </>
+        )}
+      </div>
+
+      {/* Order Details Modal */}
+      {isOrderModalOpen && selectedOrder && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-2xl">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-bold">
+                {selectedOrder.hasOwnProperty('estimate_number') ? "Estimate Details" : "Order Details"}
+              </h2>
+              <button onClick={closeModal} className="text-gray-500 hover:text-gray-700 text-2xl">&times;</button>
             </div>
             
-            <button 
-              onClick={handleLogout}
-              className="bg-white text-[#34495e] hover:bg-[#34495e]/10 py-1 px-3 rounded text-sm transition-colors"
-            >
-              Logout
-            </button>
-          </div>
-        </div>
-      </header>
-      
-      <nav className="bg-white shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex space-x-8 overflow-x-auto">
-            <Link href="/dashboard" className="border-b-2 border-[#34495e] text-[#34495e] px-3 py-4 text-sm font-medium">Dashboard</Link>
-            <Link href="/dashboard/vendors" className="border-b-2 border-transparent hover:border-[#34495e]/30 text-gray-600 hover:text-[#34495e] px-3 py-4 text-sm font-medium transition-colors">Vendors</Link>
-            <Link href="/dashboard/products" className="border-b-2 border-transparent hover:border-[#34495e]/30 text-gray-600 hover:text-[#34495e] px-3 py-4 text-sm font-medium transition-colors">Products</Link>
-            <Link href="/dashboard/orders" className="border-b-2 border-transparent hover:border-[#34495e]/30 text-gray-600 hover:text-[#34495e] px-3 py-4 text-sm font-medium transition-colors">Orders</Link>
-            <Link href="/dashboard/inventory" className="border-b-2 border-transparent hover:border-[#34495e]/30 text-gray-600 hover:text-[#34495e] px-3 py-4 text-sm font-medium transition-colors">Inventory</Link>
-            <Link href="/dashboard/reports" className="border-b-2 border-transparent hover:border-[#34495e]/30 text-gray-600 hover:text-[#34495e] px-3 py-4 text-sm font-medium transition-colors">Reports</Link>
-            <Link href="/dashboard/settings" className="border-b-2 border-transparent hover:border-[#34495e]/30 text-gray-600 hover:text-[#34495e] px-3 py-4 text-sm font-medium transition-colors">Settings</Link>
-          </div>
-        </div>
-      </nav>
-      
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="mb-6">
-          <h2 className="text-2xl font-bold text-gray-800">Vendor Management Dashboard</h2>
-          <p className="text-gray-600">Welcome to your vendor management portal</p>
-        </div>
-        
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <div className="bg-white p-6 rounded-lg shadow-md border-l-4 border-red-600">
-            <div className="flex items-center">
-              <div className="p-3 rounded-full bg-red-100 text-red-600 mr-4">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                </svg>
-              </div>
-              <div>
-                <div className="text-sm text-gray-500">Total Vendors</div>
-                <div className="text-2xl font-bold text-gray-800">24</div>
+            <div className="mb-6">
+              <h3 className="text-lg font-medium border-b border-gray-200 pb-2 mb-3">Basic Information</h3>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-gray-600 font-medium">
+                    {selectedOrder.hasOwnProperty('estimate_number') ? 'Estimate Number:' : 'Order Number:'}
+                  </p>
+                  <p className="text-gray-800">
+                    {(selectedOrder as any).estimate_number || selectedOrder.order_number || selectedOrder.id || '-'}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-gray-600 font-medium">Date:</p>
+                  <p className="text-gray-800">{new Date(selectedOrder.date).toLocaleDateString()}</p>
+                </div>
+                <div>
+                  <p className="text-gray-600 font-medium">Customer:</p>
+                  <p className="text-gray-800">{selectedOrder.customerName || 'Unknown'}</p>
+                </div>
+                <div>
+                  <p className="text-gray-600 font-medium">Status:</p>
+                  <p className="text-gray-800">{(selectedOrder as Estimate).status || 'Completed'}</p>
+                </div>
+                <div>
+                  <p className="text-gray-600 font-medium">Total:</p>
+                  <p className="text-gray-800">₹{(parseFloat(selectedOrder.totalAmount?.toString() || selectedOrder.total.toString()) || 0).toFixed(2)}</p>
+                </div>
               </div>
             </div>
-          </div>
-          
-          <div className="bg-white p-6 rounded-lg shadow-md border-l-4 border-green-600">
-            <div className="flex items-center">
-              <div className="p-3 rounded-full bg-green-100 text-green-600 mr-4">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              </div>
-              <div>
-                <div className="text-sm text-gray-500">Active Contracts</div>
-                <div className="text-2xl font-bold text-gray-800">18</div>
-              </div>
+            
+            <div className="mb-6">
+              <h3 className="text-lg font-medium border-b border-gray-200 pb-2 mb-3">Order Items</h3>
+              {selectedOrder.items && selectedOrder.items.length > 0 ? (
+                <ul className="divide-y divide-gray-100">
+                  {selectedOrder.items.map((item, index) => (
+                    <li key={index} className="py-3">
+                      <div className="font-medium">{item.product_name || 'Unknown Product'}</div>
+                      <div className="text-sm text-gray-600">Quantity: {item.quantity || 0}</div>
+                      <div className="text-sm text-gray-600">Price: ₹{item.price ? item.price.toFixed(2) : '0.00'}</div>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-gray-500">No items in this {selectedOrder.hasOwnProperty('estimate_number') ? 'estimate' : 'order'}</p>
+              )}
             </div>
-          </div>
-          
-          <div className="bg-white p-6 rounded-lg shadow-md border-l-4 border-yellow-600">
-            <div className="flex items-center">
-              <div className="p-3 rounded-full bg-yellow-100 text-yellow-600 mr-4">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              </div>
-              <div>
-                <div className="text-sm text-gray-500">Pending Orders</div>
-                <div className="text-2xl font-bold text-gray-800">5</div>
-              </div>
+            
+            <div className="flex justify-end">
+              <button 
+                onClick={closeModal}
+                className="px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300"
+              >
+                Close
+              </button>
             </div>
           </div>
         </div>
-        
-        <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-          <div className="bg-white rounded-lg shadow-md lg:col-span-3">
-            <div className="px-6 py-5 border-b border-gray-200">
-              <h3 className="text-lg font-medium text-gray-800">Recent Vendor Activity</h3>
+      )}
+
+      {/* Inventory Item Details Modal */}
+      {isInventoryModalOpen && selectedInventoryItem && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-bold">Inventory Item Details</h2>
+              <button onClick={closeModal} className="text-gray-500 hover:text-gray-700 text-2xl">&times;</button>
             </div>
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Vendor</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Category</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Last Updated</th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  <tr>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center">
-                        <div className="flex-shrink-0 h-10 w-10 bg-red-100 text-red-700 rounded-full flex items-center justify-center font-bold">
-                          AC
-                        </div>
-                        <div className="ml-4">
-                          <div className="text-sm font-medium text-gray-900">Acme Corporation</div>
-                          <div className="text-sm text-gray-500">ID: VEN-2023-001</div>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">IT Services</td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">Active</span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">Today, 9:41 AM</td>
-                  </tr>
-                  <tr>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center">
-                        <div className="flex-shrink-0 h-10 w-10 bg-blue-100 text-blue-700 rounded-full flex items-center justify-center font-bold">
-                          GI
-                        </div>
-                        <div className="ml-4">
-                          <div className="text-sm font-medium text-gray-900">Globex Industries</div>
-                          <div className="text-sm text-gray-500">ID: VEN-2023-008</div>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">Manufacturing</td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">Active</span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">Yesterday, 2:30 PM</td>
-                  </tr>
-                  <tr>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center">
-                        <div className="flex-shrink-0 h-10 w-10 bg-purple-100 text-purple-700 rounded-full flex items-center justify-center font-bold">
-                          UC
-                        </div>
-                        <div className="ml-4">
-                          <div className="text-sm font-medium text-gray-900">Umbrella Corp</div>
-                          <div className="text-sm text-gray-500">ID: VEN-2023-015</div>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">Pharmaceuticals</td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">Pending</span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">Jul 15, 2023</td>
-                  </tr>
-                </tbody>
-              </table>
+            
+            <div className="mb-6">
+              <h3 className="text-lg font-medium border-b border-gray-200 pb-2 mb-3">Basic Information</h3>
+              <div className="space-y-3">
+                <div className="flex border-b border-gray-100 py-2">
+                  <span className="font-medium text-gray-600 w-1/3">Product Code:</span>
+                  <span className="text-gray-800">{selectedInventoryItem.code || '-'}</span>
+                </div>
+                <div className="flex border-b border-gray-100 py-2">
+                  <span className="font-medium text-gray-600 w-1/3">Product Name:</span>
+                  <span className="text-gray-800">{selectedInventoryItem.name || '-'}</span>
+                </div>
+                <div className="flex border-b border-gray-100 py-2">
+                  <span className="font-medium text-gray-600 w-1/3">Current Quantity:</span>
+                  <span className="text-gray-800">{selectedInventoryItem.quantity || 0}</span>
+                </div>
+                <div className="flex border-b border-gray-100 py-2">
+                  <span className="font-medium text-gray-600 w-1/3">Price:</span>
+                  <span className="text-gray-800">₹{selectedInventoryItem.price ? selectedInventoryItem.price.toFixed(2) : '0.00'}</span>
+                </div>
+                <div className="flex border-b border-gray-100 py-2">
+                  <span className="font-medium text-gray-600 w-1/3">Status:</span>
+                  <span className="text-gray-800">
+                    {getStockStatus(selectedInventoryItem.quantity).text}
+                  </span>
+                </div>
+              </div>
             </div>
-            <div className="px-6 py-4 border-t border-gray-200">
-              <Link href="/dashboard/vendors" className="text-sm font-medium text-red-600 hover:text-red-800 flex items-center">
-                View all vendors
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                </svg>
-              </Link>
-            </div>
-          </div>
-          
-          <div className="bg-white rounded-lg shadow-md lg:col-span-2">
-            <div className="px-6 py-5 border-b border-gray-200">
-              <h3 className="text-lg font-medium text-gray-800">Quick Actions</h3>
-            </div>
-            <div className="p-6 space-y-6">
-              <Link href="/dashboard/vendors" className="w-full flex items-center justify-between bg-red-50 hover:bg-red-100 text-red-700 px-4 py-3 rounded-lg transition-colors">
-                <span className="flex items-center">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                  </svg>
-                  Add New Vendor
-                </span>
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                </svg>
-              </Link>
-              
-              <Link href="/dashboard/vendors" className="w-full flex items-center justify-between bg-blue-50 hover:bg-blue-100 text-blue-700 px-4 py-3 rounded-lg transition-colors">
-                <span className="flex items-center">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                  </svg>
-                  Create New Contract
-                </span>
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                </svg>
-              </Link>
-              
-              <Link href="/dashboard/reports" className="w-full flex items-center justify-between bg-green-50 hover:bg-green-100 text-green-700 px-4 py-3 rounded-lg transition-colors">
-                <span className="flex items-center">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                  </svg>
-                  Generate Report
-                </span>
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                </svg>
-              </Link>
-              
-              <Link href="/dashboard/vendors" className="w-full flex items-center justify-between bg-purple-50 hover:bg-purple-100 text-purple-700 px-4 py-3 rounded-lg transition-colors">
-                <span className="flex items-center">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                  </svg>
-                  Schedule Review
-                </span>
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                </svg>
-              </Link>
+            
+            <div className="flex justify-end space-x-3">
+              <button 
+                onClick={closeModal}
+                className="px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300"
+              >
+                Close
+              </button>
+              <button 
+                className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+              >
+                Print
+              </button>
             </div>
           </div>
         </div>
-      </main>
-      
-      <footer className="bg-white py-6 border-t border-gray-200 mt-12">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <p className="text-center text-gray-500 text-sm">
-            © {new Date().getFullYear()} Ambika Empire Vendor Management System. All rights reserved.
-          </p>
-        </div>
-      </footer>
+      )}
     </div>
   );
 } 

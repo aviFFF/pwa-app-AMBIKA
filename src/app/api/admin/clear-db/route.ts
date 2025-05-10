@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import dbConnect from '@/lib/mongodb';
+import { connectToDatabase } from '@/lib/mongodb';
 import User from '@/models/user';
 import Vendor from '@/models/vendor';
 import Product from '@/models/product';
@@ -39,7 +39,7 @@ export async function POST(req: NextRequest) {
     }
     
     // Connect to database
-    await dbConnect();
+    await connectToDatabase();
     
     // Find admin user(s) to preserve
     const adminUsers = await User.find({ role: 'admin' });

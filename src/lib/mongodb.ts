@@ -1,44 +1,29 @@
-import mongoose from 'mongoose';
+import { MongoClient, Db } from 'mongodb';
 
-const MONGODB_URI = process.env.MONGODB_URI!;
+const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/ambika';
+const MONGODB_DB = process.env.MONGODB_DB || 'ambika';
+
+let cachedClient: MongoClient;
+let cachedDb: Db;
 
 if (!MONGODB_URI) {
-  throw new Error(
-    'Please define the MONGODB_URI environment variable inside .env.local'
-  );
+  throw new Error('Please define the MONGODB_URI environment variable');
 }
 
-interface CachedConnection {
-  conn: typeof mongoose | null;
-  promise: Promise<typeof mongoose> | null;
+if (!MONGODB_DB) {
+  throw new Error('Please define the MONGODB_DB environment variable');
 }
 
-const cached: CachedConnection = {
-  conn: null,
-  promise: null,
-};
-
-async function dbConnect(): Promise<typeof mongoose> {
-  if (cached.conn) {
-    return cached.conn;
+export async function connectToDatabase() {
+  if (cachedClient && cachedDb) {
+    return { client: cachedClient, db: cachedDb };
   }
 
-  if (!cached.promise) {
-    const opts = {
-      bufferCommands: true,
-    };
+  const client = await MongoClient.connect(MONGODB_URI);
+  const db = client.db(MONGODB_DB);
 
-    cached.promise = mongoose.connect(MONGODB_URI, opts);
-  }
+  cachedClient = client;
+  cachedDb = db;
 
-  try {
-    const mongooseInstance = await cached.promise;
-    cached.conn = mongooseInstance;
-    return mongooseInstance;
-  } catch (e) {
-    cached.promise = null;
-    throw e;
-  }
-}
-
-export default dbConnect; 
+  return { client, db };
+} 

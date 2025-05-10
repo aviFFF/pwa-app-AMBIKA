@@ -1,20 +1,20 @@
 {
-  "name": "Vendor Management App",
-  "short_name": "VendorApp",
-  "description": "Vendor Management Progressive Web Application",
+  "name": "Ambika Empire",
+  "short_name": "Ambika App",
+  "description": "Ambika Empire Inventory and Order Management System",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",
-  "theme_color": "#2c3e50",
+  "theme_color": "#34495e",
   "icons": [
     {
-      "src": "/icons/icon-192x192.png",
+      "src": "/logo.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any maskable"
     },
     {
-      "src": "/icons/icon-512x512.png",
+      "src": "/logo.png",
       "sizes": "512x512",
       "type": "image/png"
     }
