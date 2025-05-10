@@ -1,5 +1,7 @@
 import { fileURLToPath } from "url";
 import { FlatCompat } from "@eslint/eslintrc";
+import typescript from "@typescript-eslint/eslint-plugin";
+import typescriptParser from "@typescript-eslint/parser";
 
 const __filename = fileURLToPath(import.meta.url);
 const compat = new FlatCompat({
@@ -10,6 +12,16 @@ const compat = new FlatCompat({
 const eslintConfig = [
   ...compat.extends("next/core-web-vitals"),
   {
+    files: ["**/*.ts", "**/*.tsx"],
+    plugins: {
+      "@typescript-eslint": typescript,
+    },
+    languageOptions: {
+      parser: typescriptParser,
+      parserOptions: {
+        project: "./tsconfig.json",
+      },
+    },
     rules: {
       // Disable some rules that are causing issues in the build
       "@typescript-eslint/no-unused-vars": "warn",

@@ -1,13 +1,17 @@
-import { NextResponse } from "next/server";
-import type { NextRequest } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { connectToDatabase } from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
 
+export const dynamic = 'force-dynamic';
+
+interface RouteParams {
+  params: {
+    id: string;
+  };
+}
+
 // GET /api/vendors/[id] - Get a vendor by ID
-export async function GET(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function GET(_request: NextRequest, { params }: RouteParams) {
   try {
     const id = params.id;
     
@@ -26,10 +30,7 @@ export async function GET(
 }
 
 // PUT /api/vendors/[id] - Update a vendor
-export async function PUT(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function PUT(request: NextRequest, { params }: RouteParams) {
   try {
     const id = params.id;
     const body = await request.json();
@@ -61,10 +62,7 @@ export async function PUT(
 }
 
 // DELETE /api/vendors/[id] - Delete a vendor
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function DELETE(_request: NextRequest, { params }: RouteParams) {
   try {
     const id = params.id;
     
