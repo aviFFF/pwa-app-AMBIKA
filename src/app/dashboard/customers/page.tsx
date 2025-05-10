@@ -1,8 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { jsPDF } from "jspdf";
-import "jspdf-autotable";
+import { generatePDF } from "@/utils/pdf-fix";
 
 interface Customer {
   id: number;
@@ -211,56 +210,31 @@ export default function Customers() {
     }
   };
 
-  const generatePDF = () => {
-    const doc = new jsPDF();
-    
-    // Add title
-    doc.setFontSize(18);
-    doc.text('Customers List', 14, 22);
-    
-    // Add date
-    doc.setFontSize(11);
-    doc.text(`Generated on: ${new Date().toLocaleDateString()}`, 14, 30);
-    
-    // Convert customers data for autotable
+  const handleGeneratePDF = async () => {
+    // Convert customers data for PDF
     const data = customers.map((customer, index) => {
-      return {
-        id: index + 1,
-        customer_ref_id: customer.customer_ref_id || '-',
-        name: customer.name,
-        contact: customer.contact || '-',
-        email: customer.email || '-',
-        agent: customer.agent || '-',
-        address: customer.address || '-'
-      };
+      return [
+        index + 1,
+        customer.customer_ref_id || '-',
+        customer.name,
+        customer.contact || '-',
+        customer.email || '-',
+        customer.agent || '-',
+        customer.address || '-'
+      ];
     });
     
-    // @ts-expect-error - jsPDF-AutoTable extends jsPDF with the autoTable method
-    doc.autoTable({
-      startY: 40,
-      head: [['Serial No.', 'Customer ID', 'Customer Name', 'Contact Number', 'Email', 'Agent', 'Address/City']],
-      body: data.map(item => [
-        item.id,
-        item.customer_ref_id,
-        item.name,
-        item.contact,
-        item.email,
-        item.agent,
-        item.address
-      ]),
-      theme: 'grid',
-      headStyles: {
-        fillColor: [74, 108, 247],
-        textColor: [255, 255, 255],
-        fontStyle: 'bold'
-      },
-      alternateRowStyles: {
-        fillColor: [240, 244, 255]
-      }
-    });
+    // Generate PDF using our utility
+    const success = await generatePDF(
+      'Customers List',
+      ['Serial No.', 'Customer ID', 'Customer Name', 'Contact Number', 'Email', 'Agent', 'Address/City'],
+      data,
+      'customers_list.pdf'
+    );
     
-    // Save the PDF
-    doc.save('customers_list.pdf');
+    if (!success) {
+      console.error("Failed to generate customers PDF");
+    }
   };
 
   return (
@@ -269,7 +243,7 @@ export default function Customers() {
         <h1 className="text-2xl font-semibold text-gray-800">Customer Management</h1>
         <div className="space-x-3">
           <button
-            onClick={generatePDF}
+            onClick={handleGeneratePDF}
             className="bg-white border border-blue-600 text-blue-600 hover:bg-blue-50 px-4 py-2 rounded text-sm"
           >
             Download PDF

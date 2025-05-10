@@ -1,8 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { jsPDF } from "jspdf";
-import "jspdf-autotable";
+import { generatePDF } from "@/utils/pdf-fix";
 
 interface Order {
   id: number;
@@ -115,60 +114,40 @@ export default function Dashboard() {
     return { class: 'bg-green-100 text-green-800', text: 'Good' };
   };
 
-  const generateDashboardPDF = () => {
-    const doc = new jsPDF();
-    
-    // Add title
-    doc.setFontSize(18);
-    doc.text("Dashboard Report", 14, 22);
-    
-    // Add date and time
-    doc.setFontSize(11);
-    doc.text(`Generated on: ${new Date().toLocaleString()}`, 14, 30);
-    
-    // Summary section
-    doc.setFontSize(14);
-    doc.text("Summary", 14, 45);
-    
+  const generateDashboardPDF = async () => {
     const ordersCount = todayOrders.length;
     const ordersValue = todayOrders.reduce((sum, order) => sum + (parseFloat(order.totalAmount?.toString() || order.total.toString()) || 0), 0);
     const pendingCount = pendingEstimates.length;
     const pendingValue = pendingEstimates.reduce((sum, estimate) => sum + (parseFloat(estimate.totalAmount?.toString() || estimate.total.toString()) || 0), 0);
     const lowStockCount = inventory.filter(item => item.quantity < 30).length;
     
-    // @ts-expect-error - jsPDF-AutoTable extends jsPDF with the autoTable method
-    doc.autoTable({
-      startY: 50,
-      head: [['Metric', 'Value']],
-      body: [
-        ["Today's Orders Count", ordersCount],
-        ["Today's Orders Value", `₹${ordersValue.toFixed(2)}`],
-        ["Pending Estimates Count", pendingCount],
-        ["Pending Estimates Value", `₹${pendingValue.toFixed(2)}`],
-        ["Low Stock Items Count", lowStockCount]
-      ],
-      theme: 'grid',
-      headStyles: {
-        fillColor: [74, 108, 247],
-        textColor: [255, 255, 255],
-        fontStyle: 'bold'
-      }
-    });
+    // Create data for PDF
+    const headerData = ['Metric', 'Value'];
+    const bodyData = [
+      ["Today's Orders Count", ordersCount],
+      ["Today's Orders Value", `₹${ordersValue.toFixed(2)}`],
+      ["Pending Estimates Count", pendingCount],
+      ["Pending Estimates Value", `₹${pendingValue.toFixed(2)}`],
+      ["Low Stock Items Count", lowStockCount]
+    ];
     
-    // Save the PDF
-    doc.save('dashboard_report.pdf');
+    // Generate PDF using our utility
+    const success = await generatePDF(
+      "Dashboard Report",
+      headerData,
+      bodyData,
+      "dashboard_report.pdf"
+    );
+    
+    if (!success) {
+      console.error("Failed to generate dashboard PDF");
+    }
   };
 
   return (
     <div className="container mx-auto px-4">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6">
         <h1 className="text-2xl font-semibold text-gray-800 mb-4 sm:mb-0">Dashboard Overview</h1>
-        <button 
-          onClick={generateDashboardPDF}
-          className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded text-sm w-full sm:w-auto"
-        >
-          Download Dashboard PDF
-        </button>
       </div>
 
       {/* Dashboard Cards */}

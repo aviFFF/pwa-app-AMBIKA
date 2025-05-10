@@ -1,9 +1,9 @@
-"use client";
-
+"use client"
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
+
 
 export default function Login() {
   const [username, setUsername] = useState("");
@@ -11,6 +11,9 @@ export default function Login() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const router = useRouter();
+
+
+  // Check if the app can be installed (PWA)
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();

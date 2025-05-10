@@ -1,8 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { jsPDF } from "jspdf";
-import "jspdf-autotable";
+import { generatePDF } from "@/utils/pdf-fix";
 
 interface Agent {
   id: number;
@@ -100,6 +99,31 @@ export default function Agents() {
     }
   };
 
+  const handleGeneratePDF = async () => {
+    // Convert agents data for PDF
+    const data = agents.map((agent, index) => {
+      return [
+        index + 1,
+        agent.name,
+        agent.contact || '-',
+        agent.email || '-',
+        agent.city || '-'
+      ];
+    });
+    
+    // Generate PDF using our utility
+    const success = await generatePDF(
+      'Agents List',
+      ['Serial Number', 'Agent Name', 'Contact Number', 'Email', 'City'],
+      data,
+      'agents_list.pdf'
+    );
+    
+    if (!success) {
+      console.error("Failed to generate agents PDF");
+    }
+  };
+
   const closeModal = () => {
     setIsModalOpen(false);
     setIsViewModalOpen(false);
@@ -157,61 +181,13 @@ export default function Agents() {
     }
   };
 
-  const generatePDF = () => {
-    const doc = new jsPDF();
-    
-    // Add title
-    doc.setFontSize(18);
-    doc.text('Agents List', 14, 22);
-    
-    // Add date
-    doc.setFontSize(11);
-    doc.text(`Generated on: ${new Date().toLocaleDateString()}`, 14, 30);
-    
-    // Convert agents data for autotable
-    const data = agents.map((agent, index) => {
-      return {
-        id: index + 1,
-        name: agent.name,
-        contact: agent.contact || '-',
-        email: agent.email || '-',
-        city: agent.city || '-'
-      };
-    });
-    
-    // @ts-expect-error - jsPDF-AutoTable extends jsPDF with the autoTable method
-    doc.autoTable({
-      startY: 40,
-      head: [['Serial Number', 'Agent Name', 'Contact Number', 'Email', 'City']],
-      body: data.map(item => [
-        item.id,
-        item.name,
-        item.contact,
-        item.email,
-        item.city
-      ]),
-      theme: 'grid',
-      headStyles: {
-        fillColor: [74, 108, 247],
-        textColor: [255, 255, 255],
-        fontStyle: 'bold'
-      },
-      alternateRowStyles: {
-        fillColor: [240, 244, 255]
-      }
-    });
-    
-    // Save the PDF
-    doc.save('agents_list.pdf');
-  };
-
   return (
     <div className="container mx-auto px-4">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-semibold text-gray-800">Agent Management</h1>
         <div className="space-x-3">
           <button
-            onClick={generatePDF}
+            onClick={handleGeneratePDF}
             className="bg-white border border-blue-600 text-blue-600 hover:bg-blue-50 px-4 py-2 rounded text-sm"
           >
             Download PDF
