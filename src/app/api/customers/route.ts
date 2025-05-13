@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import mongoose from 'mongoose';
-import Product from '@/models/product';
+import Customer from '@/models/customer';
 
 // Connect to MongoDB
 const connectMongo = async () => {
@@ -22,50 +22,50 @@ const connectMongo = async () => {
   }
 };
 
-// GET all products
+// GET all customers
 export async function GET() {
   try {
     await connectMongo();
     
-    const products = await Product.find({}).sort({ createdAt: -1 });
+    const customers = await Customer.find({}).sort({ createdAt: -1 });
     
-    return NextResponse.json({ products }, { status: 200 });
+    return NextResponse.json({ customers }, { status: 200 });
   } catch (error) {
-    console.error('Error fetching products:', error);
+    console.error('Error fetching customers:', error);
     return NextResponse.json(
-      { error: 'Failed to fetch products' },
+      { error: 'Failed to fetch customers' },
       { status: 500 }
     );
   }
 }
 
-// POST new product
+// POST new customer
 export async function POST(request: NextRequest) {
   try {
     await connectMongo();
     
     const data = await request.json();
     
-    // Create a new product with the data
-    const newProduct = await Product.create(data);
+    // Create a new customer with the data
+    const newCustomer = await Customer.create(data);
     
     return NextResponse.json(
-      { message: 'Product created successfully', product: newProduct },
+      { message: 'Customer created successfully', customer: newCustomer },
       { status: 201 }
     );
   } catch (error: any) {
-    console.error('Error creating product:', error);
+    console.error('Error creating customer:', error);
     
-    // Handle duplicate product code error
+    // Handle duplicate customer ID error
     if (error.code === 11000) {
       return NextResponse.json(
-        { error: 'A product with this code already exists' },
+        { error: 'A customer with this ID already exists' },
         { status: 400 }
       );
     }
     
     return NextResponse.json(
-      { error: 'Failed to create product' },
+      { error: 'Failed to create customer' },
       { status: 500 }
     );
   }

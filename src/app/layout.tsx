@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/contexts/AuthContext";
@@ -18,18 +18,19 @@ export const metadata: Metadata = {
   title: "Ambika Empire",
   description: "Inventory and Order Management System for Ambika Empire",
   manifest: "/manifest.json",
-  themeColor: "#34495e",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
     title: "Ambika Empire",
   },
-  viewport: {
-    width: "device-width",
-    initialScale: 1,
-    maximumScale: 1,
-    userScalable: false,
-  },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#34495e",
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
 };
 
 export default function RootLayout({

@@ -111,12 +111,6 @@ export default function Login() {
             />
           </div>
           
-          <div className="text-sm text-[#34495e]/80 bg-[#34495e]/5 p-4 rounded-md">
-            <p><strong>Demo Credentials:</strong></p>
-            <p>Username: admin</p>
-            <p>Password: admin123</p>
-          </div>
-          
           <button
             type="submit"
             disabled={loading}

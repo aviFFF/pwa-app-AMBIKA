@@ -1,56 +1,57 @@
-import mongoose, { Schema, Document } from 'mongoose';
+import { Schema, model, models, Document } from 'mongoose';
 
 export interface IProduct extends Document {
   code: string;
   name: string;
   size?: string;
-  category?: string;
+  category: string;
+  supplier: string;
   price: number;
-  cost?: number;
-  description?: string;
-  created_at: Date;
-  updated_at?: Date;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
-const ProductSchema: Schema = new Schema({
-  code: {
-    type: String,
-    required: true,
-    unique: true
+const productSchema = new Schema<IProduct>(
+  {
+    code: {
+      type: String,
+      required: [true, 'Product code is required'],
+      trim: true,
+      unique: true,
+    },
+    name: {
+      type: String,
+      required: [true, 'Product name is required'],
+      trim: true,
+    },
+    size: {
+      type: String,
+      trim: true,
+    },
+    category: {
+      type: String,
+      required: [true, 'Category is required'],
+      trim: true,
+    },
+    supplier: {
+      type: String,
+      required: [true, 'Supplier is required'],
+      trim: true,
+    },
+    price: {
+      type: Number,
+      required: [true, 'Price is required'],
+      min: 0,
+    },
   },
-  name: {
-    type: String,
-    required: true
-  },
-  size: {
-    type: String
-  },
-  category: {
-    type: String
-  },
-  price: {
-    type: Number,
-    required: true
-  },
-  cost: {
-    type: Number
-  },
-  description: {
-    type: String
-  },
-  created_at: {
-    type: Date,
-    default: Date.now
-  },
-  updated_at: {
-    type: Date
+  {
+    timestamps: true,
   }
-});
+);
 
 // Add text index for searching
-ProductSchema.index({ name: 'text', code: 'text', category: 'text' });
+productSchema.index({ name: 'text', code: 'text', category: 'text' });
 
-// Avoid duplicate model compilation in development
-const Product = mongoose.models.Product || mongoose.model<IProduct>('Product', ProductSchema);
+const Product = models.Product || model<IProduct>('Product', productSchema);
 
 export default Product; 

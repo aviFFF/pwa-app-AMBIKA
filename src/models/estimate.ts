@@ -1,6 +1,6 @@
 import { Schema, model, models, Document } from 'mongoose';
 
-interface OrderItem {
+interface EstimateItem {
   product_code: string;
   product_name: string;
   category: string;
@@ -10,19 +10,21 @@ interface OrderItem {
   total: number;
 }
 
-export interface IOrder extends Document {
+export interface IEstimate extends Document {
+  estimate_id: string;
   order_id: string;
   date: Date;
   customer_name: string;
+  agent_name: string;
+  total_items: number;
   total_amount: number;
   status: string;
-  estimate_id?: string;
-  items: OrderItem[];
+  items: EstimateItem[];
   createdAt: Date;
   updatedAt: Date;
 }
 
-const orderItemSchema = new Schema({
+const estimateItemSchema = new Schema({
   product_code: {
     type: String,
     required: [true, 'Product code is required'],
@@ -59,13 +61,18 @@ const orderItemSchema = new Schema({
   },
 });
 
-const orderSchema = new Schema<IOrder>(
+const estimateSchema = new Schema<IEstimate>(
   {
+    estimate_id: {
+      type: String,
+      required: [true, 'Estimate ID is required'],
+      trim: true,
+      unique: true,
+    },
     order_id: {
       type: String,
       required: [true, 'Order ID is required'],
       trim: true,
-      unique: true,
     },
     date: {
       type: Date,
@@ -77,6 +84,16 @@ const orderSchema = new Schema<IOrder>(
       required: [true, 'Customer name is required'],
       trim: true,
     },
+    agent_name: {
+      type: String,
+      required: [true, 'Agent name is required'],
+      trim: true,
+    },
+    total_items: {
+      type: Number,
+      required: [true, 'Total items count is required'],
+      min: 1,
+    },
     total_amount: {
       type: Number,
       required: [true, 'Total amount is required'],
@@ -86,16 +103,18 @@ const orderSchema = new Schema<IOrder>(
       type: String,
       required: [true, 'Status is required'],
       trim: true,
-      enum: ['No Estimate', 'Pending', 'Processing', 'Completed'],
-      default: 'No Estimate',
-    },
-    estimate_id: {
-      type: String,
-      trim: true,
+      enum: ['Pending', 'Completed'],
+      default: 'Pending',
     },
     items: {
-      type: [orderItemSchema],
-      default: [],
+      type: [estimateItemSchema],
+      required: [true, 'Estimate items are required'],
+      validate: {
+        validator: function(items: any[]) {
+          return items.length > 0;
+        },
+        message: 'At least one estimate item is required',
+      },
     },
   },
   {
@@ -103,6 +122,9 @@ const orderSchema = new Schema<IOrder>(
   }
 );
 
-const Order = models.Order || model<IOrder>('Order', orderSchema);
+// Add text index for searching
+estimateSchema.index({ estimate_id: 'text', customer_name: 'text' });
 
-export default Order; 
+const Estimate = models.Estimate || model<IEstimate>('Estimate', estimateSchema);
+
+export default Estimate; 

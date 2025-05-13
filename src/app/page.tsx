@@ -70,14 +70,14 @@ export default function Home() {
       </h1>
 
       {showInstall && (
-        <div className="bg-blue-50 border border-blue-200 rounded-md p-4">
+        <div className="bg-blue-50 border border-blue-200 rounded-md p-4 max-w-lg mx-auto">
           <p className="text-sm text-blue-800 mb-2">
-            <strong>Get the Ambika Empire App!</strong> Install our progressive web app for a better experience, faster loading, and offline access.
+            <strong>Get the Ambika Empire App!</strong><br></br> Install our progressive web app for a better experience, faster loading, and offline access.
           </p>
           <button
             type="button"
             onClick={handleInstallClick}
-            className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors"
+            className=" bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors"
           >
             Install App
           </button>
