@@ -151,68 +151,120 @@ export default function SuppliersPage() {
         </div>
       ) : filteredSuppliers.length > 0 ? (
         <div className="bg-white rounded-lg shadow overflow-hidden">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  ID
-                </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Supplier Name ↕
-                </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Email
-                </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Phone
-                </th>
-                <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {filteredSuppliers.map((supplier, index) => (
-                <tr key={supplier._id} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                    {supplier._id.substring(0, 8)}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-medium">
-                    {supplier.name}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {supplier.email}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {supplier.phone}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                    <button 
-                      onClick={() => handleView(supplier._id)}
-                      className="text-blue-600 hover:text-blue-900 mr-3"
-                    >
-                      View
-                    </button>
-                    <button 
-                      onClick={() => handleEdit(supplier._id)}
-                      className="text-green-600 hover:text-green-900 mr-3"
-                    >
-                      Edit
-                    </button>
-                    <button 
-                      onClick={() => handleDelete(supplier._id, supplier.name)}
-                      className="text-red-600 hover:text-red-900"
-                    >
-                      Delete
-                    </button>
-                  </td>
+          {/* Desktop Table - hidden on small screens */}
+          <div className="hidden md:block">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    ID
+                  </th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Supplier Name ↕
+                  </th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Email
+                  </th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Phone
+                  </th>
+                  <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Actions
+                  </th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {filteredSuppliers.map((supplier, index) => (
+                  <tr key={supplier._id} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                      {supplier._id.substring(0, 8)}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-medium">
+                      {supplier.name}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {supplier.email}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {supplier.phone}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                      <button 
+                        onClick={() => handleView(supplier._id)}
+                        className="text-blue-600 hover:text-blue-900 mr-3"
+                      >
+                        View
+                      </button>
+                      <button 
+                        onClick={() => handleEdit(supplier._id)}
+                        className="text-green-600 hover:text-green-900 mr-3"
+                      >
+                        Edit
+                      </button>
+                      <button 
+                        onClick={() => handleDelete(supplier._id, supplier.name)}
+                        className="text-red-600 hover:text-red-900"
+                      >
+                        Delete
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Mobile Card Layout - shown only on small screens */}
+          <div className="md:hidden">
+            {filteredSuppliers.map((supplier, index) => (
+              <div key={supplier._id} className={`p-4 border-b ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}`}>
+                <div className="flex justify-between items-start mb-2">
+                  <div className="text-gray-900 font-medium">{supplier.name}</div>
+                  <div className="text-gray-500 text-sm">ID: {supplier._id.substring(0, 8)}</div>
+                </div>
+                <div className="text-sm text-gray-500 mb-1">
+                  <span className="font-medium text-gray-700">Email:</span> {supplier.email}
+                </div>
+                <div className="text-sm text-gray-500 mb-1">
+                  <span className="font-medium text-gray-700">Phone:</span> {supplier.phone}
+                </div>
+                {supplier.category && (
+                  <div className="text-sm text-gray-500 mb-1">
+                    <span className="font-medium text-gray-700">Category:</span> {supplier.category}
+                  </div>
+                )}
+                {supplier.status && (
+                  <div className="text-sm text-gray-500 mb-3">
+                    <span className="font-medium text-gray-700">Status:</span> {supplier.status}
+                  </div>
+                )}
+                <div className="flex justify-end space-x-2 mt-2">
+                  <button 
+                    onClick={() => handleView(supplier._id)}
+                    className="text-white bg-blue-600 hover:bg-blue-700 px-3 py-1 rounded text-sm"
+                  >
+                    View
+                  </button>
+                  <button 
+                    onClick={() => handleEdit(supplier._id)}
+                    className="text-white bg-green-600 hover:bg-green-700 px-3 py-1 rounded text-sm"
+                  >
+                    Edit
+                  </button>
+                  <button 
+                    onClick={() => handleDelete(supplier._id, supplier.name)}
+                    className="text-white bg-red-600 hover:bg-red-700 px-3 py-1 rounded text-sm"
+                  >
+                    Delete
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+
           <div className="bg-white px-4 py-3 border-t border-gray-200 sm:px-6">
-            <div className="flex justify-between">
-              <div className="text-sm text-gray-700">
+            <div className="flex flex-col sm:flex-row justify-between">
+              <div className="text-sm text-gray-700 mb-2 sm:mb-0">
                 Showing <span className="font-medium">1</span> to <span className="font-medium">{filteredSuppliers.length}</span> of{' '}
                 <span className="font-medium">{filteredSuppliers.length}</span> results
               </div>

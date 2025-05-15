@@ -402,7 +402,8 @@ export default function Products() {
         </div>
       ) : (
         <div className="bg-white rounded-lg shadow overflow-hidden">
-          <div className="overflow-x-auto">
+          {/* Desktop Table - hidden on small screens */}
+          <div className="hidden md:block overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
@@ -475,6 +476,60 @@ export default function Products() {
                 )}
               </tbody>
             </table>
+          </div>
+
+          {/* Mobile Card Layout - shown only on small screens */}
+          <div className="md:hidden">
+            {filteredProducts.length === 0 ? (
+              <div className="p-4 text-center">
+                <p className="text-gray-500">No products found</p>
+                {searchTerm && <p className="text-sm text-gray-400 mt-1">Try adjusting your search</p>}
+              </div>
+            ) : (
+              filteredProducts.map((product, index) => (
+                <div key={product._id} className={`p-4 border-b ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}`}>
+                  <div className="flex justify-between items-start mb-2">
+                    <div className="text-gray-900 font-medium">{product.name}</div>
+                    <div className="text-sm text-gray-500">{`#${index + 1}`}</div>
+                  </div>
+                  <div className="text-sm text-gray-500 mb-1">
+                    <span className="font-medium text-gray-700">Code:</span> {product.code}
+                  </div>
+                  <div className="text-sm text-gray-500 mb-1">
+                    <span className="font-medium text-gray-700">Size:</span> {product.size || '-'}
+                  </div>
+                  <div className="text-sm text-gray-500 mb-1">
+                    <span className="font-medium text-gray-700">Category:</span> {product.category}
+                  </div>
+                  <div className="text-sm text-gray-500 mb-1">
+                    <span className="font-medium text-gray-700">Supplier:</span> {product.supplier}
+                  </div>
+                  <div className="text-sm text-gray-500 mb-3">
+                    <span className="font-medium text-gray-700">Rate:</span> ₹{product.price.toFixed(2)}
+                  </div>
+                  <div className="flex justify-end space-x-2 mt-2">
+                    <button 
+                      onClick={() => handleViewProduct(product)}
+                      className="text-white bg-blue-600 hover:bg-blue-700 px-3 py-1 rounded text-sm"
+                    >
+                      View
+                    </button>
+                    <button 
+                      onClick={() => handleEditProduct(product)}
+                      className="text-white bg-green-600 hover:bg-green-700 px-3 py-1 rounded text-sm"
+                    >
+                      Edit
+                    </button>
+                    <button 
+                      onClick={() => handleDeleteProduct(product)}
+                      className="text-white bg-red-600 hover:bg-red-700 px-3 py-1 rounded text-sm"
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         </div>
       )}

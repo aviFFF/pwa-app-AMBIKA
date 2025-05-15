@@ -242,8 +242,10 @@ export default function SalesPage() {
       
       setCurrentOrder(order);
       
-      // Check if order items exists, if not, provide empty array
-      const orderItems = order.items || [];
+      // Check if order items exists and ensure it's not empty
+      if (!order.items || !Array.isArray(order.items) || order.items.length === 0) {
+        throw new Error('Order has no items. Cannot generate estimate.');
+      }
       
       // Prepare estimate data
       const estimateData = {
@@ -251,10 +253,10 @@ export default function SalesPage() {
         date: new Date().toISOString(),
         customer_name: order.customer_name,
         agent_name: agentName,
-        total_items: orderItems.length,
+        total_items: order.items.length,
         total_amount: order.total_amount,
         status: 'Pending',
-        items: orderItems
+        items: order.items
       };
       
       // Create the estimate

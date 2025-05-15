@@ -29,7 +29,6 @@ const agentSchema = new Schema<IAgent>(
     },
     city: {
       type: String,
-      required: [true, 'City is required'],
       trim: true,
     },
   },
