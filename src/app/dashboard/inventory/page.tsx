@@ -2,15 +2,29 @@
 
 import { useState, useEffect } from "react";
 
-interface InventoryItem {
-  id: number;
+interface Product {
+  _id: string;
   code: string;
   name: string;
+  size?: string;
+  category: string;
+  supplier: string;
+  price: number;
+  quantity?: number;
+  location?: string;
+}
+
+interface InventoryItem {
+  _id: string;
+  product_id: string;
+  product_code: string;
+  product_name: string;
   size?: string;
   category?: string;
   quantity: number;
   price: number;
   location?: string;
+  updated_at: string;
 }
 
 export default function Inventory() {
@@ -23,8 +37,10 @@ export default function Inventory() {
   const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false);
   const [quantityToAdd, setQuantityToAdd] = useState(1);
   const [isAddPurchaseModalOpen, setIsAddPurchaseModalOpen] = useState(false);
-  const [selectedProductId, setSelectedProductId] = useState<number | null>(null);
-  const [products, setProducts] = useState<Array<{id: number; code: string; name: string; size?: string; category?: string; price: number}>>([]);
+  const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState("");
 
   useEffect(() => {
     loadInventory();
@@ -37,20 +53,37 @@ export default function Inventory() {
 
   const loadInventory = async () => {
     try {
-      // In a real app, this would be an API call
-      const inventoryData = JSON.parse(localStorage.getItem("inventory") || "[]");
-      setInventory(inventoryData);
+      setIsLoading(true);
+      // Fetch inventory from API
+      const response = await fetch('/api/inventory');
+      
+      if (!response.ok) {
+        throw new Error(`Error: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      setInventory(data.inventory || []);
+      setError("");
     } catch (error) {
       console.error("Error loading inventory:", error);
+      setError("Failed to load inventory. Please try again.");
       setInventory([]);
+    } finally {
+      setIsLoading(false);
     }
   };
 
   const loadProducts = async () => {
     try {
-      // In a real app, this would be an API call
-      const productsData = JSON.parse(localStorage.getItem("products") || "[]");
-      setProducts(productsData);
+      // Fetch products from API
+      const response = await fetch('/api/products');
+      
+      if (!response.ok) {
+        throw new Error(`Error: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      setProducts(data.products || []);
     } catch (error) {
       console.error("Error loading products:", error);
       setProducts([]);
@@ -60,8 +93,8 @@ export default function Inventory() {
   const filterInventory = () => {
     let filtered = inventory.filter((item) => {
       const matchesSearch =
-        (item.name && item.name.toLowerCase().includes(searchTerm.toLowerCase())) ||
-        (item.code && item.code.toLowerCase().includes(searchTerm.toLowerCase()));
+        (item.product_name && item.product_name.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        (item.product_code && item.product_code.toLowerCase().includes(searchTerm.toLowerCase()));
 
       if (stockFilter === "all") {
         return matchesSearch;
@@ -115,28 +148,35 @@ export default function Inventory() {
     if (!selectedItem || quantityToAdd <= 0) return;
 
     try {
+      setIsLoading(true);
       const currentQuantity = selectedItem.quantity || 0;
       const newQuantity = currentQuantity + quantityToAdd;
 
-      // In a real app, this would be an API call
-      const updatedInventory = inventory.map((item) => {
-        if (item.id === selectedItem.id) {
-          return { ...item, quantity: newQuantity };
-        }
-        return item;
+      // Update inventory via API
+      const response = await fetch(`/api/inventory/${selectedItem._id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          quantity: newQuantity
+        }),
       });
 
-      localStorage.setItem("inventory", JSON.stringify(updatedInventory));
-      setInventory(updatedInventory);
+      if (!response.ok) {
+        throw new Error(`Error: ${response.status}`);
+      }
 
-      // Store update timestamp for cross-page updates
-      sessionStorage.setItem("product-update-timestamp", new Date().getTime().toString());
-
+      // Reload inventory to get latest data
+      await loadInventory();
+      
       closeModal();
       alert(`Stock updated successfully!\n\nPrevious quantity: ${currentQuantity}\nAdded: ${quantityToAdd}\nNew total: ${newQuantity}`);
     } catch (error) {
       console.error("Error updating inventory:", error);
       alert("Failed to update inventory. Please try again.");
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -144,51 +184,66 @@ export default function Inventory() {
     if (!selectedProductId || quantityToAdd <= 0) return;
 
     try {
-      const selectedProduct = products.find(p => p.id === selectedProductId);
+      setIsLoading(true);
+      const selectedProduct = products.find(p => p._id === selectedProductId);
       if (!selectedProduct) {
         alert("Product not found");
         return;
       }
 
-      const existingItem = inventory.find(item => item.id === selectedProductId);
-      const currentQuantity = existingItem ? existingItem.quantity : 0;
-      const newQuantity = currentQuantity + quantityToAdd;
-
-      // Update or add to inventory
-      let updatedInventory;
+      // Check if product already exists in inventory
+      const existingItem = inventory.find(item => item.product_id === selectedProductId);
+      
       if (existingItem) {
-        updatedInventory = inventory.map((item) => {
-          if (item.id === selectedProductId) {
-            return { ...item, quantity: newQuantity };
-          }
-          return item;
+        // Update existing inventory item
+        const response = await fetch(`/api/inventory/${existingItem._id}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            quantity: existingItem.quantity + quantityToAdd
+          }),
         });
+
+        if (!response.ok) {
+          throw new Error(`Error: ${response.status}`);
+        }
       } else {
         // Create new inventory item
-        const newItem = {
-          id: selectedProduct.id,
-          code: selectedProduct.code,
-          name: selectedProduct.name,
-          size: selectedProduct.size,
-          category: selectedProduct.category,
-          quantity: quantityToAdd,
-          price: selectedProduct.price,
-          location: "Main Warehouse"
-        };
-        updatedInventory = [...inventory, newItem];
+        const response = await fetch('/api/inventory', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            product_id: selectedProduct._id,
+            product_code: selectedProduct.code,
+            product_name: selectedProduct.name,
+            size: selectedProduct.size,
+            category: selectedProduct.category,
+            quantity: quantityToAdd,
+            price: selectedProduct.price,
+            location: "Main Warehouse"
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error(`Error: ${response.status}`);
+        }
       }
 
-      localStorage.setItem("inventory", JSON.stringify(updatedInventory));
-      setInventory(updatedInventory);
-
-      // Store update timestamp for cross-page updates
-      sessionStorage.setItem("product-update-timestamp", new Date().getTime().toString());
-
+      // Reload inventory
+      await loadInventory();
+      
       closeModal();
-      alert(`Inventory updated successfully!\n\nPrevious quantity: ${currentQuantity}\nAdded: ${quantityToAdd}\nNew total: ${newQuantity}`);
+      const currentQuantity = existingItem ? existingItem.quantity : 0;
+      alert(`Inventory updated successfully!\n\nPrevious quantity: ${currentQuantity}\nAdded: ${quantityToAdd}\nNew total: ${currentQuantity + quantityToAdd}`);
     } catch (error) {
       console.error("Error updating inventory:", error);
       alert("Failed to update inventory. Please try again.");
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -269,64 +324,77 @@ export default function Inventory() {
           </div>
         </div>
 
-        <div className="overflow-x-auto -mx-4 sm:mx-0">
-          <div className="inline-block min-w-full align-middle">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-3 py-2 sm:px-6 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Code</th>
-                  <th className="px-3 py-2 sm:px-6 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
-                  <th className="px-3 py-2 sm:px-6 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Rate (₹)</th>
-                  <th className="px-3 py-2 sm:px-6 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Quantity</th>
-                  <th className="px-3 py-2 sm:px-6 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Stock Level</th>
-                  <th className="px-3 py-2 sm:px-6 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {filteredInventory.length === 0 ? (
-                  <tr>
-                    <td colSpan={6} className="px-3 py-2 sm:px-6 sm:py-4 text-center text-gray-500">No inventory items found</td>
-                  </tr>
-                ) : (
-                  filteredInventory.map((item) => (
-                    <tr 
-                      key={item.id}
-                      className="hover:bg-gray-50 cursor-pointer"
-                      onClick={() => handleViewProduct(item)}
-                    >
-                      <td className="px-3 py-2 sm:px-6 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500">{item.code || '-'}</td>
-                      <td className="px-3 py-2 sm:px-6 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-900">{item.name || '-'}</td>
-                      <td className="px-3 py-2 sm:px-6 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500">₹{item.price ? item.price.toFixed(2) : '0.00'}</td>
-                      <td className="px-3 py-2 sm:px-6 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500">{item.quantity || 0}</td>
-                      <td className="px-3 py-2 sm:px-6 sm:py-4 whitespace-nowrap">
-                        <span className={`px-2 py-0.5 sm:py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                          item.quantity < 37
-                            ? "bg-red-100 text-red-800"
-                            : item.quantity <= 72
-                            ? "bg-blue-100 text-blue-800"
-                            : "bg-green-100 text-green-800"
-                        }`}>
-                          {getStockLevelText(item.quantity)}
-                        </span>
-                      </td>
-                      <td className="px-3 py-2 sm:px-6 sm:py-4 whitespace-nowrap text-xs sm:text-sm font-medium">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleUpdateStock(item);
-                          }}
-                          className="text-green-600 hover:text-green-900 mr-3"
-                        >
-                          Update
-                        </button>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
+        {error && (
+          <div className="mb-4 p-3 rounded-md bg-red-100 text-red-700">
+            {error}
           </div>
-        </div>
+        )}
+
+        {isLoading ? (
+          <div className="text-center py-10">
+            <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+            <p className="mt-2 text-gray-500">Loading inventory data...</p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto -mx-4 sm:mx-0">
+            <div className="inline-block min-w-full align-middle">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-3 py-2 sm:px-6 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Code</th>
+                    <th className="px-3 py-2 sm:px-6 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                    <th className="px-3 py-2 sm:px-6 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Rate (₹)</th>
+                    <th className="px-3 py-2 sm:px-6 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Quantity</th>
+                    <th className="px-3 py-2 sm:px-6 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Stock Level</th>
+                    <th className="px-3 py-2 sm:px-6 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {filteredInventory.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} className="px-3 py-2 sm:px-6 sm:py-4 text-center text-gray-500">No inventory items found</td>
+                    </tr>
+                  ) : (
+                    filteredInventory.map((item) => (
+                      <tr 
+                        key={item._id}
+                        className="hover:bg-gray-50 cursor-pointer"
+                        onClick={() => handleViewProduct(item)}
+                      >
+                        <td className="px-3 py-2 sm:px-6 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500">{item.product_code || '-'}</td>
+                        <td className="px-3 py-2 sm:px-6 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-900">{item.product_name || '-'}</td>
+                        <td className="px-3 py-2 sm:px-6 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500">₹{item.price ? item.price.toFixed(2) : '0.00'}</td>
+                        <td className="px-3 py-2 sm:px-6 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500">{item.quantity || 0}</td>
+                        <td className="px-3 py-2 sm:px-6 sm:py-4 whitespace-nowrap">
+                          <span className={`px-2 py-0.5 sm:py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                            item.quantity < 37
+                              ? "bg-red-100 text-red-800"
+                              : item.quantity <= 72
+                              ? "bg-blue-100 text-blue-800"
+                              : "bg-green-100 text-green-800"
+                          }`}>
+                            {getStockLevelText(item.quantity)}
+                          </span>
+                        </td>
+                        <td className="px-3 py-2 sm:px-6 sm:py-4 whitespace-nowrap text-xs sm:text-sm font-medium">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleUpdateStock(item);
+                            }}
+                            className="text-green-600 hover:text-green-900 mr-3"
+                          >
+                            Update
+                          </button>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
       </div>
       
       {/* View Product Modal */}
@@ -343,11 +411,11 @@ export default function Inventory() {
               <div className="space-y-3">
                 <div className="flex border-b border-gray-100 py-2">
                   <span className="font-medium text-gray-600 w-1/3">Product Code:</span>
-                  <span className="text-gray-800">{selectedItem.code || '-'}</span>
+                  <span className="text-gray-800">{selectedItem.product_code || '-'}</span>
                 </div>
                 <div className="flex border-b border-gray-100 py-2">
                   <span className="font-medium text-gray-600 w-1/3">Product Name:</span>
-                  <span className="text-gray-800">{selectedItem.name || '-'}</span>
+                  <span className="text-gray-800">{selectedItem.product_name || '-'}</span>
                 </div>
                 <div className="flex border-b border-gray-100 py-2">
                   <span className="font-medium text-gray-600 w-1/3">Size:</span>
@@ -373,6 +441,12 @@ export default function Inventory() {
                   <span className="font-medium text-gray-600 w-1/3">Status:</span>
                   <span className="text-gray-800">{getStockLevelText(selectedItem.quantity)}</span>
                 </div>
+                {selectedItem.updated_at && (
+                  <div className="flex border-b border-gray-100 py-2">
+                    <span className="font-medium text-gray-600 w-1/3">Last Updated:</span>
+                    <span className="text-gray-800">{new Date(selectedItem.updated_at).toLocaleString()}</span>
+                  </div>
+                )}
               </div>
             </div>
             
@@ -402,7 +476,7 @@ export default function Inventory() {
         <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md">
             <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-bold">Update Stock for {selectedItem.name}</h2>
+              <h2 className="text-xl font-bold">Update Stock for {selectedItem.product_name}</h2>
               <button onClick={closeModal} className="text-gray-500 hover:text-gray-700 text-2xl">&times;</button>
             </div>
             
@@ -434,8 +508,9 @@ export default function Inventory() {
               <button 
                 onClick={confirmUpdateStock}
                 className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
+                disabled={isLoading}
               >
-                Update
+                {isLoading ? 'Updating...' : 'Update'}
               </button>
             </div>
           </div>
@@ -459,12 +534,12 @@ export default function Inventory() {
                 id="product-select" 
                 className="w-full border border-gray-300 rounded px-3 py-2"
                 value={selectedProductId || ""}
-                onChange={(e) => setSelectedProductId(parseInt(e.target.value))}
+                onChange={(e) => setSelectedProductId(e.target.value)}
                 autoFocus
               >
                 <option value="">Select a product</option>
                 {products.map(p => (
-                  <option key={p.id} value={p.id}>{p.code} - {p.name}</option>
+                  <option key={p._id} value={p._id}>{p.code} - {p.name}</option>
                 ))}
               </select>
             </div>
@@ -494,9 +569,9 @@ export default function Inventory() {
               <button 
                 onClick={confirmAddPurchase}
                 className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
-                disabled={!selectedProductId}
+                disabled={!selectedProductId || isLoading}
               >
-                Update
+                {isLoading ? 'Updating...' : 'Update'}
               </button>
             </div>
           </div>

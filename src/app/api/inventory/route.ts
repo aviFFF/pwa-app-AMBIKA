@@ -8,42 +8,34 @@ export async function GET(request: NextRequest) {
   try {
     const { db } = await connectToDatabase();
     
-    // Get inventory items with product information
-    const pipeline = [
-      {
-        $lookup: {
-          from: "products",
-          localField: "product_id",
-          foreignField: "_id",
-          as: "product"
-        }
-      },
-      {
-        $unwind: {
-          path: "$product",
-          preserveNullAndEmptyArrays: true
-        }
-      }
-    ];
+    // Get inventory items
+    const inventory = await db.collection("inventory").find({}).toArray();
     
-    const inventory = await db.collection("inventory").aggregate(pipeline).toArray();
-    
-    return NextResponse.json(inventory);
+    return NextResponse.json({ inventory });
   } catch (error) {
     console.error("Error getting inventory:", error);
     return NextResponse.json({ error: "Failed to get inventory" }, { status: 500 });
   }
 }
 
-// POST /api/inventory - Update inventory
+// POST /api/inventory - Create new inventory item
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { product_id, quantity, location } = body;
+    const { 
+      product_id, 
+      product_code, 
+      product_name,
+      size,
+      category,
+      quantity, 
+      price,
+      location 
+    } = body;
     
-    if (!product_id || quantity == null) {
+    if (!product_id || !product_name || quantity == null) {
       return NextResponse.json(
-        { error: "Product ID and quantity are required" },
+        { error: "Product ID, product name and quantity are required" },
         { status: 400 }
       );
     }
@@ -51,50 +43,55 @@ export async function POST(request: NextRequest) {
     const { db } = await connectToDatabase();
     
     // Check if product exists
-    const productObjectId = new ObjectId(product_id);
-    const product = await db.collection("products").findOne({ _id: productObjectId });
-    
-    if (!product) {
-      return NextResponse.json({ error: "Product not found" }, { status: 404 });
+    let productObjectId;
+    try {
+      productObjectId = new ObjectId(product_id);
+    } catch (e) {
+      return NextResponse.json({ error: "Invalid product ID format" }, { status: 400 });
     }
     
-    // Check if inventory item exists
-    const inventoryItem = await db.collection("inventory").findOne({ 
-      product_id: productObjectId 
+    // Check if inventory item already exists
+    const existingItem = await db.collection("inventory").findOne({ 
+      product_id: product_id 
     });
     
     let result;
+    let newItem;
     
-    if (inventoryItem) {
+    if (existingItem) {
       // Update existing inventory item
       result = await db.collection("inventory").updateOne(
-        { product_id: productObjectId },
+        { product_id: product_id },
         { 
           $set: { 
-            quantity: quantity,
-            location: location || inventoryItem.location,
-            last_updated: new Date().toISOString()
+            quantity: parseInt(existingItem.quantity || 0) + parseInt(quantity),
+            updated_at: new Date().toISOString()
           } 
         }
       );
+      
+      newItem = await db.collection("inventory").findOne({ product_id: product_id });
     } else {
       // Create new inventory item
-      result = await db.collection("inventory").insertOne({
-        product_id: productObjectId,
-        quantity: quantity,
-        location: location || null,
-        last_updated: new Date().toISOString()
-      });
+      const newInventoryItem = {
+        product_id: product_id,
+        product_code: product_code,
+        product_name: product_name,
+        size: size,
+        category: category,
+        quantity: parseInt(quantity),
+        price: parseFloat(price),
+        location: location || "Main Warehouse",
+        updated_at: new Date().toISOString()
+      };
+      
+      result = await db.collection("inventory").insertOne(newInventoryItem);
+      newItem = { _id: result.insertedId, ...newInventoryItem };
     }
     
-    // Get updated inventory item
-    const updatedItem = await db.collection("inventory").findOne({ 
-      product_id: productObjectId 
-    });
-    
-    return NextResponse.json(updatedItem);
+    return NextResponse.json(newItem);
   } catch (error) {
-    console.error("Error updating inventory:", error);
-    return NextResponse.json({ error: "Failed to update inventory" }, { status: 500 });
+    console.error("Error creating/updating inventory:", error);
+    return NextResponse.json({ error: "Failed to create/update inventory" }, { status: 500 });
   }
 } 
