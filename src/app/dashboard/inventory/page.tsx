@@ -169,7 +169,7 @@ export default function Inventory() {
 
       // Reload inventory to get latest data
       await loadInventory();
-      
+
       closeModal();
       alert(`Stock updated successfully!\n\nPrevious quantity: ${currentQuantity}\nAdded: ${quantityToAdd}\nNew total: ${newQuantity}`);
     } catch (error) {
@@ -193,7 +193,7 @@ export default function Inventory() {
 
       // Check if product already exists in inventory
       const existingItem = inventory.find(item => item.product_id === selectedProductId);
-      
+
       if (existingItem) {
         // Update existing inventory item
         const response = await fetch(`/api/inventory/${existingItem._id}`, {
@@ -220,11 +220,11 @@ export default function Inventory() {
             product_id: selectedProduct._id,
             product_code: selectedProduct.code,
             product_name: selectedProduct.name,
-            size: selectedProduct.size,
-            category: selectedProduct.category,
-            quantity: quantityToAdd,
-            price: selectedProduct.price,
-            location: "Main Warehouse"
+          size: selectedProduct.size,
+          category: selectedProduct.category,
+          quantity: quantityToAdd,
+          price: selectedProduct.price,
+          location: "Main Warehouse"
           }),
         });
 
@@ -235,7 +235,7 @@ export default function Inventory() {
 
       // Reload inventory
       await loadInventory();
-      
+
       closeModal();
       const currentQuantity = existingItem ? existingItem.quantity : 0;
       alert(`Inventory updated successfully!\n\nPrevious quantity: ${currentQuantity}\nAdded: ${quantityToAdd}\nNew total: ${currentQuantity + quantityToAdd}`);
@@ -336,64 +336,64 @@ export default function Inventory() {
             <p className="mt-2 text-gray-500">Loading inventory data...</p>
           </div>
         ) : (
-          <div className="overflow-x-auto -mx-4 sm:mx-0">
-            <div className="inline-block min-w-full align-middle">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
+        <div className="overflow-x-auto -mx-4 sm:mx-0">
+          <div className="inline-block min-w-full align-middle">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-3 py-2 sm:px-6 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Code</th>
+                  <th className="px-3 py-2 sm:px-6 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                  <th className="px-3 py-2 sm:px-6 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Rate (₹)</th>
+                  <th className="px-3 py-2 sm:px-6 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Quantity</th>
+                  <th className="px-3 py-2 sm:px-6 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Stock Level</th>
+                  <th className="px-3 py-2 sm:px-6 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {filteredInventory.length === 0 ? (
                   <tr>
-                    <th className="px-3 py-2 sm:px-6 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Code</th>
-                    <th className="px-3 py-2 sm:px-6 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
-                    <th className="px-3 py-2 sm:px-6 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Rate (₹)</th>
-                    <th className="px-3 py-2 sm:px-6 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Quantity</th>
-                    <th className="px-3 py-2 sm:px-6 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Stock Level</th>
-                    <th className="px-3 py-2 sm:px-6 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                    <td colSpan={6} className="px-3 py-2 sm:px-6 sm:py-4 text-center text-gray-500">No inventory items found</td>
                   </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {filteredInventory.length === 0 ? (
-                    <tr>
-                      <td colSpan={6} className="px-3 py-2 sm:px-6 sm:py-4 text-center text-gray-500">No inventory items found</td>
-                    </tr>
-                  ) : (
-                    filteredInventory.map((item) => (
-                      <tr 
+                ) : (
+                  filteredInventory.map((item) => (
+                    <tr 
                         key={item._id}
-                        className="hover:bg-gray-50 cursor-pointer"
-                        onClick={() => handleViewProduct(item)}
-                      >
+                      className="hover:bg-gray-50 cursor-pointer"
+                      onClick={() => handleViewProduct(item)}
+                    >
                         <td className="px-3 py-2 sm:px-6 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500">{item.product_code || '-'}</td>
                         <td className="px-3 py-2 sm:px-6 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-900">{item.product_name || '-'}</td>
-                        <td className="px-3 py-2 sm:px-6 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500">₹{item.price ? item.price.toFixed(2) : '0.00'}</td>
-                        <td className="px-3 py-2 sm:px-6 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500">{item.quantity || 0}</td>
-                        <td className="px-3 py-2 sm:px-6 sm:py-4 whitespace-nowrap">
-                          <span className={`px-2 py-0.5 sm:py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                            item.quantity < 37
-                              ? "bg-red-100 text-red-800"
-                              : item.quantity <= 72
-                              ? "bg-blue-100 text-blue-800"
-                              : "bg-green-100 text-green-800"
-                          }`}>
-                            {getStockLevelText(item.quantity)}
-                          </span>
-                        </td>
-                        <td className="px-3 py-2 sm:px-6 sm:py-4 whitespace-nowrap text-xs sm:text-sm font-medium">
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleUpdateStock(item);
-                            }}
-                            className="text-green-600 hover:text-green-900 mr-3"
-                          >
-                            Update
-                          </button>
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
+                      <td className="px-3 py-2 sm:px-6 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500">₹{item.price ? item.price.toFixed(2) : '0.00'}</td>
+                      <td className="px-3 py-2 sm:px-6 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500">{item.quantity || 0}</td>
+                      <td className="px-3 py-2 sm:px-6 sm:py-4 whitespace-nowrap">
+                        <span className={`px-2 py-0.5 sm:py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                          item.quantity < 37
+                            ? "bg-red-100 text-red-800"
+                            : item.quantity <= 72
+                            ? "bg-blue-100 text-blue-800"
+                            : "bg-green-100 text-green-800"
+                        }`}>
+                          {getStockLevelText(item.quantity)}
+                        </span>
+                      </td>
+                      <td className="px-3 py-2 sm:px-6 sm:py-4 whitespace-nowrap text-xs sm:text-sm font-medium">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleUpdateStock(item);
+                          }}
+                          className="text-green-600 hover:text-green-900 mr-3"
+                        >
+                          Update
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
           </div>
+        </div>
         )}
       </div>
       

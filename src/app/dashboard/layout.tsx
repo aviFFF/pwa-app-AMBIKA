@@ -10,7 +10,6 @@ import { registerServiceWorker } from "../sw-register";
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const router = useRouter();
   const pathname = usePathname();
 
@@ -86,134 +85,67 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             >
               Logout
             </button>
-            
-            {/* Mobile menu button */}
-            <button 
-              className="ml-4 text-white block sm:hidden"
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" className="h-6 w-6">
-                {mobileMenuOpen ? (
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                ) : (
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-                )}
-              </svg>
-            </button>
           </div>
         </div>
       </header>
       
-      {/* Mobile menu */}
-      {mobileMenuOpen && (
-        <div className="bg-white shadow-md p-4 sm:hidden">
-          <div className="mb-4 border-b pb-2">
-            <p className="text-sm text-gray-800 font-medium">Welcome, {user.name || user.username}</p>
-            <p className="text-xs text-gray-600">{user.role}</p>
-          </div>
-          <nav className="flex flex-col space-y-2">
-            <Link 
-              href="/dashboard" 
-              className={`px-4 py-2 rounded-md ${pathname === '/dashboard' ? 'bg-[#34495e] text-white' : 'text-gray-700 hover:bg-gray-100'}`}
-              onClick={() => setMobileMenuOpen(false)}
-            >
-              Dashboard
-            </Link>
-            <Link 
-              href="/dashboard/sales" 
-              className={`px-4 py-2 rounded-md ${pathname === '/dashboard/sales' ? 'bg-[#34495e] text-white' : 'text-gray-700 hover:bg-gray-100'}`}
-              onClick={() => setMobileMenuOpen(false)}
-            >
-              Sales
-            </Link>
-            <Link 
-              href="/dashboard/customers" 
-              className={`px-4 py-2 rounded-md ${pathname === '/dashboard/customers' ? 'bg-[#34495e] text-white' : 'text-gray-700 hover:bg-gray-100'}`}
-              onClick={() => setMobileMenuOpen(false)}
-            >
-              Customers
-            </Link>
-            <Link 
-              href="/dashboard/products" 
-              className={`px-4 py-2 rounded-md ${pathname === '/dashboard/products' ? 'bg-[#34495e] text-white' : 'text-gray-700 hover:bg-gray-100'}`}
-              onClick={() => setMobileMenuOpen(false)}
-            >
-              Products
-            </Link>
-            <Link 
-              href="/dashboard/suppliers" 
-              className={`px-4 py-2 rounded-md ${pathname === '/dashboard/suppliers' ? 'bg-[#34495e] text-white' : 'text-gray-700 hover:bg-gray-100'}`}
-              onClick={() => setMobileMenuOpen(false)}
-            >
-              Suppliers
-            </Link>
-            <Link 
-              href="/dashboard/agents" 
-              className={`px-4 py-2 rounded-md ${pathname === '/dashboard/agents' ? 'bg-[#34495e] text-white' : 'text-gray-700 hover:bg-gray-100'}`}
-              onClick={() => setMobileMenuOpen(false)}
-            >
-              Agents
-            </Link>
-            <Link 
-              href="/dashboard/inventory" 
-              className={`px-4 py-2 rounded-md ${pathname === '/dashboard/inventory' ? 'bg-[#34495e] text-white' : 'text-gray-700 hover:bg-gray-100'}`}
-              onClick={() => setMobileMenuOpen(false)}
-            >
-              Inventory
-            </Link>
-          </nav>
-        </div>
-      )}
-      
-      {/* Desktop navigation */}
-      <nav className="bg-white shadow-sm hidden sm:block">
+      {/* Always visible menu with horizontal scroll */}
+      <nav className="bg-white shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex space-x-8 overflow-x-auto">
+          <div className="flex space-x-4 overflow-x-auto py-1 scrollbar-hide">
             <Link 
               href="/dashboard" 
-              className={`border-b-2 ${pathname === '/dashboard' ? 'border-[#34495e] text-[#34495e]' : 'border-transparent hover:border-[#34495e]/30 text-gray-600 hover:text-[#34495e]'} px-3 py-4 text-sm font-medium transition-colors`}
+              className={`border-b-2 whitespace-nowrap ${pathname === '/dashboard' ? 'border-[#34495e] text-[#34495e]' : 'border-transparent hover:border-[#34495e]/30 text-gray-600 hover:text-[#34495e]'} px-3 py-4 text-sm font-medium transition-colors flex-shrink-0`}
             >
               Dashboard
             </Link>
             <Link 
               href="/dashboard/sales" 
-              className={`border-b-2 ${pathname === '/dashboard/sales' ? 'border-[#34495e] text-[#34495e]' : 'border-transparent hover:border-[#34495e]/30 text-gray-600 hover:text-[#34495e]'} px-3 py-4 text-sm font-medium transition-colors`}
+              className={`border-b-2 whitespace-nowrap ${pathname === '/dashboard/sales' ? 'border-[#34495e] text-[#34495e]' : 'border-transparent hover:border-[#34495e]/30 text-gray-600 hover:text-[#34495e]'} px-3 py-4 text-sm font-medium transition-colors flex-shrink-0`}
             >
               Sales
             </Link>
             <Link 
               href="/dashboard/customers" 
-              className={`border-b-2 ${pathname === '/dashboard/customers' ? 'border-[#34495e] text-[#34495e]' : 'border-transparent hover:border-[#34495e]/30 text-gray-600 hover:text-[#34495e]'} px-3 py-4 text-sm font-medium transition-colors`}
+              className={`border-b-2 whitespace-nowrap ${pathname === '/dashboard/customers' ? 'border-[#34495e] text-[#34495e]' : 'border-transparent hover:border-[#34495e]/30 text-gray-600 hover:text-[#34495e]'} px-3 py-4 text-sm font-medium transition-colors flex-shrink-0`}
             >
               Customers
             </Link>
             <Link 
               href="/dashboard/products" 
-              className={`border-b-2 ${pathname === '/dashboard/products' ? 'border-[#34495e] text-[#34495e]' : 'border-transparent hover:border-[#34495e]/30 text-gray-600 hover:text-[#34495e]'} px-3 py-4 text-sm font-medium transition-colors`}
+              className={`border-b-2 whitespace-nowrap ${pathname === '/dashboard/products' ? 'border-[#34495e] text-[#34495e]' : 'border-transparent hover:border-[#34495e]/30 text-gray-600 hover:text-[#34495e]'} px-3 py-4 text-sm font-medium transition-colors flex-shrink-0`}
             >
               Products
             </Link>
             <Link 
               href="/dashboard/suppliers" 
-              className={`border-b-2 ${pathname === '/dashboard/suppliers' ? 'border-[#34495e] text-[#34495e]' : 'border-transparent hover:border-[#34495e]/30 text-gray-600 hover:text-[#34495e]'} px-3 py-4 text-sm font-medium transition-colors`}
+              className={`border-b-2 whitespace-nowrap ${pathname === '/dashboard/suppliers' ? 'border-[#34495e] text-[#34495e]' : 'border-transparent hover:border-[#34495e]/30 text-gray-600 hover:text-[#34495e]'} px-3 py-4 text-sm font-medium transition-colors flex-shrink-0`}
             >
               Suppliers
             </Link>
             <Link 
               href="/dashboard/agents" 
-              className={`border-b-2 ${pathname === '/dashboard/agents' ? 'border-[#34495e] text-[#34495e]' : 'border-transparent hover:border-[#34495e]/30 text-gray-600 hover:text-[#34495e]'} px-3 py-4 text-sm font-medium transition-colors`}
+              className={`border-b-2 whitespace-nowrap ${pathname === '/dashboard/agents' ? 'border-[#34495e] text-[#34495e]' : 'border-transparent hover:border-[#34495e]/30 text-gray-600 hover:text-[#34495e]'} px-3 py-4 text-sm font-medium transition-colors flex-shrink-0`}
             >
               Agents
             </Link>
             <Link 
               href="/dashboard/inventory" 
-              className={`border-b-2 ${pathname === '/dashboard/inventory' ? 'border-[#34495e] text-[#34495e]' : 'border-transparent hover:border-[#34495e]/30 text-gray-600 hover:text-[#34495e]'} px-3 py-4 text-sm font-medium transition-colors`}
+              className={`border-b-2 whitespace-nowrap ${pathname === '/dashboard/inventory' ? 'border-[#34495e] text-[#34495e]' : 'border-transparent hover:border-[#34495e]/30 text-gray-600 hover:text-[#34495e]'} px-3 py-4 text-sm font-medium transition-colors flex-shrink-0`}
             >
               Inventory
             </Link>
           </div>
         </div>
       </nav>
+      
+      {/* Mobile user info */}
+      <div className="bg-white shadow-sm p-2 block sm:hidden">
+        <div className="max-w-7xl mx-auto px-2">
+          <p className="text-sm text-gray-800 font-medium">Welcome, {user.name || user.username}</p>
+          <p className="text-xs text-gray-600">{user.role}</p>
+        </div>
+      </div>
       
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
         {children}
